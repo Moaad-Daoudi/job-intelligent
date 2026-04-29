@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import re
+from urllib.parse import urljoin
 
 
 class RekruteScraper:
@@ -17,46 +18,44 @@ class RekruteScraper:
         return BeautifulSoup(res.text, "html.parser")
 
     # ---------------------------
-    # EXTRACTION REGION ROBUSTE
+    # LIST PAGE (jobs list)
     # ---------------------------
-    def extract_region(self, title_raw):
+    def scrape_page(self, page=1):
+        url = f"{self.BASE_URL}/offres.html?p={page}&s=1&o=1"
+        soup = self.get_soup(url)
 
-        # 1️⃣ méthode simple "|"
-        if "|" in title_raw:
-            parts = title_raw.split("|")
-            return parts[1].strip()
+        jobs = []
+        listings = soup.select("ul.job-list2 li.post-id")
 
-        # 2️⃣ regex fallback (Rabat, Casablanca etc.)
-        match = re.search(r"(Casablanca|Rabat|Tanger|Marrakech|Fès|Agadir)", title_raw)
-        if match:
-            return match.group(1)
+        for li in listings:
+            job = self.parse_list_job(li)
 
-        return ""
+            # 🔥 IMPORTANT: scrape detail page
+            if job["url"]:
+                detail = self.scrape_job_detail(job["url"])
+                job.update(detail)
+
+            jobs.append(job)
+
+        return jobs
 
     # ---------------------------
-    # PARSE JOB
+    # LIST PARSER
     # ---------------------------
-    def parse_job(self, li):
+    def parse_list_job(self, li):
 
         title_tag = li.select_one("h2 a.titreJob")
-        title_raw = title_tag.get_text(strip=True) if title_tag else ""
+        title = title_tag.get_text(strip=True) if title_tag else ""
 
-        title = title_raw
-        region = self.extract_region(title_raw)
-
-        # company
-        img = li.select_one("img.photo")
-        company = img.get("alt", "").strip() if img else ""
-
-        if not company:
-            company = "Confidentiel"
-
-        # url
-        url_tag = li.select_one("h2 a.titreJob")
         url = ""
+        if title_tag and title_tag.get("href"):
+            url = urljoin(self.BASE_URL, title_tag["href"])
 
-        if url_tag and url_tag.get("href"):
-            url = self.BASE_URL + url_tag["href"]
+        img = li.select_one("img.photo")
+        company = img.get("alt", "").strip() if img else "Confidentiel"
+
+        # region parfois dans titre
+        region = self.extract_region(title)
 
         return {
             "title": title,
@@ -66,26 +65,57 @@ class RekruteScraper:
         }
 
     # ---------------------------
-    # SCRAPE PAGE
+    # DETAIL PAGE SCRAPING 🔥
     # ---------------------------
-    def scrape_page(self, page=1):
-
-        url = f"{self.BASE_URL}/offres.html?p={page}&s=1&o=1"
+    def scrape_job_detail(self, url):
         soup = self.get_soup(url)
 
-        jobs = []
-        listings = soup.select("ul.job-list2 li.post-id")
+        # description
+        desc_tag = soup.select_one(".info span")
+        description = desc_tag.get_text(" ", strip=True) if desc_tag else ""
 
-        for li in listings:
-            jobs.append(self.parse_job(li))
+        # extra infos list
+        lis = soup.select(".info ul li")
 
-        return jobs
+        contract = ""
+        experience = ""
+        education = ""
+        category = ""
+
+        for li in lis:
+            text = li.get_text(" ", strip=True)
+
+            if "contrat" in text.lower():
+                contract = text
+            elif "expérience" in text.lower():
+                experience = text
+            elif "niveau" in text.lower() or "étude" in text.lower():
+                education = text
+            elif "secteur" in text.lower():
+                category = text
+
+        return {
+            "description": description,
+            "contract": contract,
+            "experience": experience,
+            "education": education,
+            "category": category
+        }
 
     # ---------------------------
-    # SCRAPE ALL
+    # REGION EXTRACTION
+    # ---------------------------
+    def extract_region(self, title):
+        if "|" in title:
+            return title.split("|")[-1].strip()
+
+        match = re.search(r"(Casablanca|Rabat|Tanger|Marrakech|Fès|Agadir)", title)
+        return match.group(1) if match else ""
+
+    # ---------------------------
+    # MAIN SCRAPER
     # ---------------------------
     def scrape(self, max_pages=1):
-
         all_jobs = []
 
         for page in range(1, max_pages + 1):
