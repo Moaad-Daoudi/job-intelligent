@@ -1,125 +1,73 @@
-import requests
-from bs4 import BeautifulSoup
+import scrapy
 import re
-from urllib.parse import urljoin
+from services.scrapers.items import JobItem
 
-
-class RekruteScraper:
+class RekruteSpider(scrapy.Spider):
+    name = "rekrute"
+    source_name = "rekrute"
     BASE_URL = "https://www.rekrute.com"
+    
+    # Configuration
+    MAX_PAGES = 3 
 
-    def __init__(self):
-        self.session = requests.Session()
-        self.headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
+    def start_requests(self):
+        # Start scraping at page 1
+        yield scrapy.Request(
+            f"{self.BASE_URL}/offres.html?p=1&s=1&o=1", 
+            callback=self.parse, 
+            meta={'page': 1}
+        )
 
-    def get_soup(self, url):
-        res = self.session.get(url, headers=self.headers)
-        return BeautifulSoup(res.text, "html.parser")
+    def extract_region(self, title_raw):
+        # 1️⃣ méthode simple "|"
+        if "|" in title_raw:
+            parts = title_raw.split("|")
+            return parts[1].strip()
 
-    # ---------------------------
-    # LIST PAGE (jobs list)
-    # ---------------------------
-    def scrape_page(self, page=1):
-        url = f"{self.BASE_URL}/offres.html?p={page}&s=1&o=1"
-        soup = self.get_soup(url)
+        # 2️⃣ regex fallback
+        match = re.search(r"(Casablanca|Rabat|Tanger|Marrakech|Fès|Agadir)", title_raw)
+        if match:
+            return match.group(1)
+        return ""
 
-        jobs = []
-        listings = soup.select("ul.job-list2 li.post-id")
+    def parse(self, response):
+        # CSS Selectors for Rekrute
+        listings = response.css("ul.job-list2 li.post-id")
 
         for li in listings:
-            job = self.parse_list_job(li)
+            title_tag = li.css("h2 a.titreJob::text").get()
+            title = title_tag.strip() if title_tag else ""
+            
+            img = li.css("img.photo::attr(alt)").get()
+            company = img.strip() if img else "Confidentiel"
+            
+            href = li.css("h2 a.titreJob::attr(href)").get()
+            url = self.BASE_URL + href if href else ""
 
-            # 🔥 IMPORTANT: scrape detail page
-            if job["url"]:
-                detail = self.scrape_job_detail(job["url"])
-                job.update(detail)
+            # Mapping to JobItem
+            item = JobItem()
+            item["title"] = title
+            item["company"] = company
+            item["region"] = self.extract_region(title)
+            item["url"] = url
+            # Fields that are empty/not in the list view
+            item["published_time"] = None
+            item["description"] = None 
+            item["category"] = None
+            item["remote"] = None
+            item["experience"] = None
+            item["education"] = None
+            item["contract"] = None
+            item["company_name_full"] = company
+            item["company_sector"] = None
+            item["company_website"] = None
+            item["company_description"] = None
 
-            jobs.append(job)
+            yield item
 
-        return jobs
-
-    # ---------------------------
-    # LIST PARSER
-    # ---------------------------
-    def parse_list_job(self, li):
-
-        title_tag = li.select_one("h2 a.titreJob")
-        title = title_tag.get_text(strip=True) if title_tag else ""
-
-        url = ""
-        if title_tag and title_tag.get("href"):
-            url = urljoin(self.BASE_URL, title_tag["href"])
-
-        img = li.select_one("img.photo")
-        company = img.get("alt", "").strip() if img else "Confidentiel"
-
-        # region parfois dans titre
-        region = self.extract_region(title)
-
-        return {
-            "title": title,
-            "company": company,
-            "region": region,
-            "url": url
-        }
-
-    # ---------------------------
-    # DETAIL PAGE SCRAPING 🔥
-    # ---------------------------
-    def scrape_job_detail(self, url):
-        soup = self.get_soup(url)
-
-        # description
-        desc_tag = soup.select_one(".info span")
-        description = desc_tag.get_text(" ", strip=True) if desc_tag else ""
-
-        # extra infos list
-        lis = soup.select(".info ul li")
-
-        contract = ""
-        experience = ""
-        education = ""
-        category = ""
-
-        for li in lis:
-            text = li.get_text(" ", strip=True)
-
-            if "contrat" in text.lower():
-                contract = text
-            elif "expérience" in text.lower():
-                experience = text
-            elif "niveau" in text.lower() or "étude" in text.lower():
-                education = text
-            elif "secteur" in text.lower():
-                category = text
-
-        return {
-            "description": description,
-            "contract": contract,
-            "experience": experience,
-            "education": education,
-            "category": category
-        }
-
-    # ---------------------------
-    # REGION EXTRACTION
-    # ---------------------------
-    def extract_region(self, title):
-        if "|" in title:
-            return title.split("|")[-1].strip()
-
-        match = re.search(r"(Casablanca|Rabat|Tanger|Marrakech|Fès|Agadir)", title)
-        return match.group(1) if match else ""
-
-    # ---------------------------
-    # MAIN SCRAPER
-    # ---------------------------
-    def scrape(self, max_pages=1):
-        all_jobs = []
-
-        for page in range(1, max_pages + 1):
-            print(f"Scraping page {page}...")
-            all_jobs.extend(self.scrape_page(page))
-
-        return all_jobs
+        # Pagination Logic: Keep scraping until MAX_PAGES
+        current_page = response.meta.get('page')
+        if current_page < self.MAX_PAGES:
+            next_page = current_page + 1
+            next_url = f"{self.BASE_URL}/offres.html?p={next_page}&s=1&o=1"
+            yield scrapy.Request(next_url, callback=self.parse, meta={'page': next_page})
