@@ -15,13 +15,9 @@ from webdriver_manager.chrome import ChromeDriverManager
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Prompt user for email and password
-email_input = input("Enter your LinkedIn email: ")
-password_input = input("Enter your LinkedIn password: ")
-
 # Set environment variables
-os.environ['EMAIL'] = email_input
-os.environ['PASSWORD'] = password_input
+os.environ['EMAIL'] = "mouaddawdi496@gmail.com"
+os.environ['PASSWORD'] = "0643537308"
 
 # Set up Chrome options
 chrome_options = Options()

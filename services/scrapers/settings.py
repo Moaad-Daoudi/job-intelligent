@@ -6,5 +6,6 @@ NEWSPIDER_MODULE = 'services.scrapers.morocco'
 
 
 ITEM_PIPELINES = {
-   'services.scrapers.pipeline.LocalFilePipeline': 300,
+   # 'services.scrapers.pipeline.LocalFilePipeline': 300,
+   'services.scrapers.minioPipeline.MinioBronzePipeline': 300
 }

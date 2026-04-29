@@ -1,3 +1,5 @@
+name: job-intelligent
+
 services:
   minio:
     image: minio/minio:latest

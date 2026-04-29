@@ -12,6 +12,7 @@ __pycache__/
 
 # Données locales (les volumes Docker)
 data/
+bronze/
 
 # IDE
 .vscode/
