@@ -1,0 +1,3 @@
+pip install playwright pandas && playwright install chromium
+python -m playwright install
+pip install pandas pyarrow boto3
