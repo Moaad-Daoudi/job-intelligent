@@ -21,8 +21,8 @@ def run_scrapers():
     
     # 3. Planifie les spiders
     # Scrapy gère la concurrence nativement(In parallel). Tous ces spiders tourneront en parallèle.
-    process.crawl(EmploiSpider)
-    # process.crawl(LinkedInSpider)
+    # process.crawl(EmploiSpider)
+    process.crawl(LinkedInSpider)
     # process.crawl(RekruteSpider)
     # process.crawl(KhdmaSpider)
     
