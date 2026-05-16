@@ -1,21 +1,54 @@
-# Environnement Python
-.venv/
-env/
-**/venv/
-**/.venv/
-**/env/
+# --- Python / Backend ---
 __pycache__/
-*.pyc
-
-# Variables d'environnement
+*.py[cod]
+*$py.class
+venv/
+env/
 .env
+.pytest_cache/
+.coverage
+htmlcov/
 
-# Données locales (les volumes Docker)
-data/
+# --- React / Frontend ---
+node_modules/
+dist/
+dist-ssr/
+.vite/
+.npm/
+.eslintcache
 
-# IDE
+# --- Data & Local Storage ---
+# Since you have MinIO and Postgres data folders
+/data/minio/*
+/data/postgres/*
+/data/airflow_db/*
+!/data/.keep
+
+# --- Airflow ---
+/services/airflow/logs/*
+!/services/airflow/logs/.keep
+airflow-webserver.pid
+airflow-scheduler.pid
+airflow-triggerer.pid
+
+# --- IDE & OS ---
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db
 
-# Logs / Archives
+# --- Logs ---
 *.log
+
+# --- dbt ---
+target/
+dbt_packages/
+dbt_modules/
+logs/
+dbt_test__audit.csv
+
+# --- Build & Compiled ---
+*.pyc
+*.pyo
+*.pyd
+.Python

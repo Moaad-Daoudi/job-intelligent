@@ -12,6 +12,7 @@ class JobItem(scrapy.Item):
     remote = scrapy.Field()
     experience = scrapy.Field()
     education = scrapy.Field()
+    skills = scrapy.Field()
     contract = scrapy.Field()
     company_name_full = scrapy.Field()
     company_sector = scrapy.Field()

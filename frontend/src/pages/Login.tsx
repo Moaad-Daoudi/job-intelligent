@@ -1,0 +1,25 @@
+import { Link } from 'react-router-dom';
+import { Brain } from 'lucide-react';
+
+export default function Login() {
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+      <div className="w-full max-w-md bg-white p-10 rounded-3xl shadow-xl border border-slate-100">
+        <Link to="/" className="flex justify-center mb-8 gap-2 items-center text-2xl font-bold text-teal-600">
+          <Brain size={28} /> DataNexus AI
+        </Link>
+        
+        <h2 className="text-2xl font-bold mb-6">Welcome Back</h2>
+        <form className="space-y-4">
+          <input className="w-full p-4 border border-slate-200 rounded-xl outline-none" placeholder="Email Address" />
+          <input className="w-full p-4 border border-slate-200 rounded-xl outline-none" type="password" placeholder="Password" />
+          <button className="w-full bg-teal-500 text-white py-4 rounded-xl font-bold hover:bg-teal-600 transition">Log In</button>
+        </form>
+
+        <p className="mt-6 text-center text-slate-500 text-sm">
+          Don't have an account? <Link to="/register" className="text-teal-600 font-bold">Register</Link>
+        </p>
+      </div>
+    </div>
+  );
+}

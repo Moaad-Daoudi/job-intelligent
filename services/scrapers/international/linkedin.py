@@ -143,93 +143,16 @@ class LinkedInSpider(scrapy.Spider):
         "https://www.linkedin.com/company/casajob/posts/",
         "https://www.linkedin.com/company/hiredma/posts/",
         "https://www.linkedin.com/company/stagiaires-ma/posts/",
-
-        # # ============================================================
-        # # 🤖 DATA & AI SPECIFIC COMMUNITIES
-        # # ============================================================
-        "https://www.linkedin.com/company/morocco-ai/posts/",
-        "https://www.linkedin.com/company/ai-morocco/posts/",
-        "https://www.linkedin.com/company/data-science-maroc/posts/",
-        "https://www.linkedin.com/company/moroccotech/posts/",
-        "https://www.linkedin.com/company/africa-data-science/posts/",
-        "https://www.linkedin.com/company/job-opportunities-africa/posts/",
-
-        # # ============================================================
-        # # 🏢 TOP TECH & DATA EMPLOYERS IN MOROCCO
-        # # ============================================================
-        # # Consulting & Big4
-        "https://www.linkedin.com/company/capgemini/posts/",
-        "https://www.linkedin.com/company/accenture/posts/",
-        "https://www.linkedin.com/company/deloitte/posts/",
-        "https://www.linkedin.com/company/pwc/posts/",
-        "https://www.linkedin.com/company/kpmg/posts/",
-        "https://www.linkedin.com/company/ernst-young/posts/",
-        "https://www.linkedin.com/company/mckinsey/posts/",
-        "https://www.linkedin.com/company/aubay/posts/",
-        "https://www.linkedin.com/company/sqli/posts/",
-        "https://www.linkedin.com/company/alten/posts/",
-        "https://www.linkedin.com/company/cgi-inc/posts/",
-        "https://www.linkedin.com/company/sopra-steria/posts/",
-        "https://www.linkedin.com/company/atos/posts/",
-        "https://www.linkedin.com/company/wavestone/posts/",
-        "https://www.linkedin.com/company/onepoint/posts/",
-
-        # # Telecom & Banking (big data hirers in Morocco)
-        "https://www.linkedin.com/company/maroc-telecom/posts/",
-        "https://www.linkedin.com/company/inwi/posts/",
-        "https://www.linkedin.com/company/orange-maroc/posts/",
-        "https://www.linkedin.com/company/attijariwafa-bank/posts/",
-        "https://www.linkedin.com/company/banque-populaire/posts/",
-        "https://www.linkedin.com/company/cih-bank/posts/",
-        "https://www.linkedin.com/company/bmce-bank/posts/",
-        "https://www.linkedin.com/company/societe-generale-maroc/posts/",
-        "https://www.linkedin.com/company/wafasalaf/posts/",
-
-        # # Tech companies with Morocco offices
-        "https://www.linkedin.com/company/ibm/posts/",
-        "https://www.linkedin.com/company/oracle/posts/",
-        "https://www.linkedin.com/company/sap/posts/",
-        "https://www.linkedin.com/company/microsoft/posts/",
-        "https://www.linkedin.com/company/google/posts/",
-        "https://www.linkedin.com/company/amazon/posts/",
-        "https://www.linkedin.com/company/sii-group/posts/",
-        "https://www.linkedin.com/company/intelcia/posts/",
-        "https://www.linkedin.com/company/webhelp/posts/",
-        "https://www.linkedin.com/company/contextor/posts/",
-        "https://www.linkedin.com/company/valuequest/posts/",
-
-        # # ============================================================
-        # # 👥 LINKEDIN GROUPS (Morocco & Africa focused)
-        # # ============================================================
-        "https://www.linkedin.com/groups/3295246/",   # original
-        "https://www.linkedin.com/groups/1811580/",   # Data Science Morocco
-        "https://www.linkedin.com/groups/12248925/",  # AI & Machine Learning Morocco
-        "https://www.linkedin.com/groups/4447613/",   # Emploi Maroc
-        "https://www.linkedin.com/groups/6519713/",   # Recrutement Maroc
-        "https://www.linkedin.com/groups/2071626/",   # Big Data & Analytics
-        "https://www.linkedin.com/groups/3825397/",   # Africa Tech & Data
-        "https://www.linkedin.com/groups/1860090/",   # Data Engineering
-        "https://www.linkedin.com/groups/7009231/",   # ML & AI Jobs
-
-        # # ============================================================
-        # # 🎓 SCHOOLS & INCUBATORS (post internship/job offers)
-        # # ============================================================
-        "https://www.linkedin.com/company/universite-mohammed-vi-polytechnique/posts/",
-        "https://www.linkedin.com/company/ensias/posts/",
-        "https://www.linkedin.com/company/ecole-polytechnique-maroc/posts/",
-        "https://www.linkedin.com/company/hec-maroc/posts/",
-        "https://www.linkedin.com/company/emi-rabat/posts/",
-        "https://www.linkedin.com/company/um6p-ventures/posts/",
-        "https://www.linkedin.com/company/moroccotech-hub/posts/",
-        "https://www.linkedin.com/company/technopark/posts/",
-        "https://www.linkedin.com/company/startgate-maroc/posts/",
     ]
 
     def __init__(self, *args, **kwargs):
         super(LinkedInSpider, self).__init__(*args, **kwargs)
         chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--window-size=1920,1080")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
         self.driver = webdriver.Chrome(options=chrome_options)
 
     def start_requests(self):
@@ -569,9 +492,11 @@ class LinkedInSpider(scrapy.Spider):
                             raw_text = meta_el.get_text(strip=True) if meta_el else ""
                             
                             parts = raw_text.split('·')
-                            clean_loc = parts[0].strip() if len(parts) > 0 else "Non spécifié"
+                            clean_loc = raw_text.split('·')[0].strip()
                             
-                            time_str = parts[1].strip() if len(parts) > 1 else ""
+                            parts = raw_text.split('·')
+                            
+                            time_str = parts[1].strip() if len(parts) > 1 else "0d"
                             pub_date = self.parse_date(time_str)
 
                             item = JobItem()

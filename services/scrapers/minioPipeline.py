@@ -1,24 +1,33 @@
 import boto3
 import json
 import os
+import logging
 from datetime import datetime
 from io import BytesIO
 
+logger = logging.getLogger(__name__)
+
 class MinioBronzePipeline:
     def __init__(self, endpoint, access_key, secret_key, bucket_name):
+        if not endpoint.startswith('http'):
+            endpoint = 'http://' + endpoint
+            
+        logger.info(f"MinIO Pipeline connecting to: {endpoint}")
+        
         self.s3 = boto3.client(
             's3',
             endpoint_url=endpoint,
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
-            region_name='us-east-1' # Default for MinIO
+            region_name='us-east-1'
         )
         self.bucket_name = bucket_name
 
     @classmethod
     def from_crawler(cls, crawler):
+        endpoint = os.getenv('MINIO_ENDPOINT', 'http://minio:9000')
         return cls(
-            endpoint=os.getenv('MINIO_ENDPOINT', 'http://localhost:9000'),
+            endpoint=endpoint,
             access_key=os.getenv('MINIO_ROOT_USER', 'minioadmin'),
             secret_key=os.getenv('MINIO_ROOT_PASSWORD', 'miniopassword'),
             bucket_name=os.getenv('MINIO_BUCKET_BRONZE', 'bronze')
@@ -36,6 +45,9 @@ class MinioBronzePipeline:
             obj = self.s3.get_object(Bucket=self.bucket_name, Key=s3_key)
             existing_data = obj['Body'].read().decode('utf-8')
         except self.s3.exceptions.NoSuchKey:
+            existing_data = ""
+        except Exception as e:
+            logger.error(f"Error accessing MinIO: {e}")
             existing_data = ""
 
         # 2. Append new item
