@@ -7,3 +7,4 @@ const api = axios.create({
 export const getJobs = (params: any) => api.get('/jobs', { params });
 export const getJobById = (id: string) => api.get(`/jobs/${id}`);
 export const getAnalytics = () => api.get('/analytics/stats');
+export const getHomeData = () => api.get('/analytics/home');

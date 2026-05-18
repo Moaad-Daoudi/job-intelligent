@@ -1,44 +1,32 @@
 import pandas as pd
 import json
 import os
-import re
+import sys
 from pathlib import Path
-from io import BytesIO
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 1. COPY-PASTE YOUR HELPER FUNCTIONS HERE
-# ══════════════════════════════════════════════════════════════════════════════
-# (Keep these exactly the same as in your minio_cleaning.py)
+# Add 'processing' to sys.path so we can import minio_cleaning
+sys.path.append(os.path.abspath('processing'))
+from minio_cleaning import (
+    clean_title,
+    clean_location,
+    extract_contract,
+    extract_remote,
+    extract_education,
+    extract_experience,
+    extract_experience_level,
+    extract_skills,
+    extract_salary,
+    extract_job_category,
+    is_data_job,
+    is_genuine_job_post,
+    parse_date_smart
+)
 
-def extract_contract(text):
-    text = str(text).lower()
-    if any(x in text for x in ["cdi", "permanent"]): return "CDI"
-    if "cdd" in text: return "CDD"
-    if any(x in text for x in ["stage", "intern"]): return "Stage"
-    if "alternance" in text or "apprentissage" in text: return "Alternance"
-    return "Non spécifié"
-
-def extract_skills(text):
-    # This matches the list in your minio_cleaning.py
-    skill_map = {
-        "Python": ["python"], "SQL": ["sql"], "Azure": ["azure"], 
-        "GCP": ["gcp", "google cloud"], "AWS": ["aws"], "Spark": ["spark", "pyspark"],
-        "Docker": ["docker"], "Kubernetes": ["kubernetes", "k8s"], "Airflow": ["airflow"],
-        "Power BI": ["power bi"], "Tableau": ["tableau"], "Git": ["git"]
-    }
-    found = [s for s, kw in skill_map.items() if any(k in str(text).lower() for k in kw)]
-    return ", ".join(found) if found else "Non spécifié"
-
-# [PASTE YOUR OTHER FUNCTIONS HERE: extract_remote, extract_education, extract_experience, is_data_job, etc.]
-
-# ══════════════════════════════════════════════════════════════════════════════
-# 2. LOCAL LOADER (Replaces MinIO connection)
-# ══════════════════════════════════════════════════════════════════════════════
 def load_local_data():
     all_data = []
     bronze_dir = Path("bronze") # Your local folder
     
-    print(f"🔍 Reading local data from: {bronze_dir.absolute()}")
+    print(f"Reading local data from: {bronze_dir.absolute()}")
     
     for json_file in bronze_dir.rglob("offres.json"):
         with open(json_file, "r", encoding="utf-8") as f:
@@ -55,30 +43,50 @@ def load_local_data():
             for d in data: d["source"] = source_name
             
             all_data.extend(data)
-            print(f"✅ Loaded {len(data)} items from {json_file}")
+            print(f"Loaded {len(data)} items from {json_file}")
             
     return all_data
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 3. RUNNING THE PROCESSING (Exactly like your minio_cleaning.py)
-# ══════════════════════════════════════════════════════════════════════════════
-data = load_local_data()
-df = pd.DataFrame(data)
+if __name__ == "__main__":
+    data = load_local_data()
+    df = pd.DataFrame(data)
 
-print("\n🧾 RAW SAMPLE DATA:")
-print(df[["title", "location"]].head(10))
+    print("\nRAW SAMPLE DATA (location/region):")
+    if "location" in df.columns and "region" in df.columns:
+        print(df[["location", "region"]].head(10))
+    elif "location" in df.columns:
+        print(df[["location"]].head(10))
+    elif "region" in df.columns:
+        print(df[["region"]].head(10))
 
-print("\n📊 LOCATION NULL CHECK:")
-print(df["location"].isna().sum(), "null locations")
+    # Fix for location vs region issue (same as in minio_cleaning.py)
+    if "location" not in df.columns:
+        df["location"] = pd.Series(dtype=str)
+    if "region" in df.columns:
+        df["location"] = df["location"].fillna(df["region"])
 
-# Apply your processing logic from minio_cleaning.py
-df["description"] = df["description"].fillna("")
-df["contract"] = df["description"].apply(extract_contract)
-df["skills"] = df["description"].apply(extract_skills)
+    # Apply your processing logic from minio_cleaning.py
+    df["title"] = df["title"].fillna("").apply(clean_title)
+    df["company"] = df["company"].fillna("confidentiel").str.strip().str.lower()
+    df["description"] = df["description"].fillna("")
+    df["location"] = df["location"].fillna("").astype(str)
+    
+    df["region"] = df["location"].apply(clean_location)
+    df["published_time"] = df["published_time"].apply(parse_date_smart)
+    df["contract"]   = df["description"].apply(extract_contract)
+    df["remote"]     = df["description"].apply(extract_remote)
+    df["education"]  = df["description"].apply(extract_education)
+    df["experience"] = df["description"].apply(extract_experience)
+    df["experience_level"] = df["experience"].apply(extract_experience_level)
+    df["skills"]     = df["description"].apply(extract_skills)
+    df["salaire"]    = df["description"].apply(extract_salary)
+    df["job_category"] = df.apply(lambda row: extract_job_category(row.get("title", ""), row.get("description", "")), axis=1)
+    
+    df.drop_duplicates(subset=["title", "company", "source"], keep="first", inplace=True)
 
-# Save locally to 'silver' folder for testing
-os.makedirs("silver", exist_ok=True)
-df.to_parquet("silver/test_results.parquet", index=False)
+    # Save locally to 'silver' folder for testing
+    os.makedirs("silver", exist_ok=True)
+    df.to_parquet("silver/test_results.parquet", index=False)
 
-print(f"\n📊 Processing complete! {len(df)} rows saved to 'silver/test_results.parquet'")
-print(df[["title", "contract", "skills"]].head(5))
+    print(f"\nProcessing complete! {len(df)} rows saved to 'silver/test_results.parquet'")
+    print(df[["title", "region", "salaire", "skills"]].head(10))

@@ -141,8 +141,7 @@ DATA_KEYWORDS = [
 JOB_SIGNALS   = {"recrute", "recrutement", "offre", "job", "cdi", "cdd", "stage", "poste"}
 NOISE_SIGNALS = {
     "webinar", "webinaire", "award", "podcast", "article", "newsletter", 
-    "recette", "recipe", "management", "leadership", "conseil", 
-    "astuce", "transformation", "hashtag"
+    "recette", "recipe", "astuce", "hashtag"
 }
 
 morocco_regions = {
@@ -199,35 +198,31 @@ def normalize(text):
     return shout.lower()
 
 def clean_location(location_str):
-    print("🔎 INPUT:", location_str)  # DEBUG LINE
-
-    if not location_str or pd.isna(location_str) or location_str == "None":
-        print("➡️ EMPTY LOCATION")
+    if not location_str or pd.isna(location_str) or str(location_str).strip().lower() in ["none", "nan", ""]:
         return "National / Autre"
 
-    city_raw = str(location_str).split('·')[0].split(',')[0].strip()
-    print("🏙️ CITY RAW:", city_raw)
+    location_str_str = str(location_str)
+    city_raw = location_str_str.split('·')[0].split(',')[0].strip()
 
     norm_city = normalize(city_raw)
-    print("⚙️ NORMALIZED:", norm_city)
+    norm_full = normalize(location_str_str)
 
+    # 1. Match based on region name directly in the location string
     for region, cities in morocco_regions.items():
+        if normalize(region) in norm_full:
+            return region
+            
+        # 2. Match based on city
         for city in cities:
-            if normalize(city) == norm_city:
-                print("✅ MATCH FOUND:", region)
+            norm_c = normalize(city)
+            # Match exact city prefix or if the city appears anywhere in the full location string
+            if norm_c == norm_city or norm_c in norm_full:
                 return region
 
-    if "maroc" in normalize(location_str):
-        print("🇲🇦 FALLBACK NATIONAL")
+    # 3. Fallback to National if Morocco is mentioned
+    if "maroc" in norm_full or "morocco" in norm_full:
         return "National / Autre"
 
-    print("❌ NO MATCH → AUTRE")
-    return "Autre / International"
-    
-    # Fallback if "Maroc" is mentioned but no city matches
-    if "maroc" in normalize(location_str):
-        return "National / Autre"
-        
     return "Autre / International"
 
 def extract_contract(text):
@@ -316,6 +311,49 @@ def extract_skills(text):
             
     return ", ".join(found) if found else "Non spécifié"
 
+def extract_salary(text):
+    text_lower = text.lower()
+    # Match patterns like: 10000 - 15000 MAD, 10k - 15k DHS, 40 000 euros
+    pattern = r'(\d{1,3}(?:[ .,]?\d{3})*(?:k)?)\s*(?:-|à|to)?\s*(\d{1,3}(?:[ .,]?\d{3})*(?:k)?)?\s*(mad|dhs|dh|eur|euros|€|\$|usd)'
+    matches = re.findall(pattern, text_lower)
+    if matches:
+        res = []
+        for m in matches:
+            # Clean spaces from numbers
+            val = " - ".join([x.replace(' ', '').replace(',', '') for x in m[:2] if x])
+            curr = m[2].upper()
+            if curr in ['€', 'EUR', 'EUROS']: curr = 'EUR'
+            if curr in ['$', 'USD']: curr = 'USD'
+            if curr in ['MAD', 'DHS', 'DH']: curr = 'MAD'
+            res.append(f"{val} {curr}")
+        return " | ".join(res)
+    return "Non spécifié"
+
+def extract_experience_level(exp_str):
+    if exp_str == "Non spécifié":
+        return "Non spécifié"
+    try:
+        years = int(re.search(r'\d+', exp_str).group())
+        if years <= 2: return "Junior (0-2 ans)"
+        if years <= 5: return "Confirmé (3-5 ans)"
+        return "Senior (5+ ans)"
+    except:
+        return "Non spécifié"
+
+def extract_job_category(title, description=""):
+    text = (title + " " + description).lower()
+    if any(x in text for x in ["data engineer", "data pipeline", "etl", "data architect"]):
+        return "Data Engineering"
+    if any(x in text for x in ["data scientist", "machine learning", "ia", "ai", "deep learning", "nlp", "llm"]):
+        return "Data Science & AI"
+    if any(x in text for x in ["data analyst", "business intelligence", "bi", "power bi", "tableau"]):
+        return "Data Analysis & BI"
+    if any(x in text for x in ["devops", "mlops", "cloud"]):
+        return "Cloud & MLOps"
+    if any(x in text for x in ["developpeur", "developer", "software engineer", "fullstack", "backend", "frontend"]):
+        return "Software Engineering"
+    return "Autre"
+
 def is_data_job(title, description=""):
     text = (title + " " + description).lower()
     title_n = normalize(title)
@@ -361,86 +399,101 @@ def is_genuine_job_post(title, description=""):
 # 🚀 MAIN PIPELINE
 # ══════════════════════════════════════════════════════════════════════════════
 
-# 1. Bucket Setup
-for bucket in [BUCKET_BRONZE, BUCKET_SILVER]:
-    if not client.bucket_exists(bucket): client.make_bucket(bucket)
+def main():
+    # 1. Bucket Setup
+    for bucket in [BUCKET_BRONZE, BUCKET_SILVER]:
+        if not client.bucket_exists(bucket): client.make_bucket(bucket)
 
-# 2. Loading
-today = datetime.now()
-dates = [(today - timedelta(days=i)).strftime("%Y/%m/%d") for i in range(DAYS_TO_LOAD)]
-all_data = []
+    # 2. Loading
+    today = datetime.now()
+    dates = [(today - timedelta(days=i)).strftime("%Y/%m/%d") for i in range(DAYS_TO_LOAD)]
+    all_data = []
 
-for source in SOURCES:
-    for date_str in dates:
-        path = f"{source}/{date_str}/offres.json"
-        try:
-            resp = client.get_object(BUCKET_BRONZE, path)
-            content = resp.read().decode("utf-8")
-            resp.close()
-            
+    for source in SOURCES:
+        for date_str in dates:
+            path = f"{source}/{date_str}/offres.json"
             try:
-                lines = [l for l in content.splitlines() if l.strip()]
-                data = [json.loads(line) for line in lines]
-            except:
-                data = json.loads(content)
-                if isinstance(data, dict): data = [data]
-            
-            for d in data: d["source"] = source
-            all_data.extend(data)
-            print(f"✅ Loaded {source} ({date_str})")
-        except Exception: pass
+                resp = client.get_object(BUCKET_BRONZE, path)
+                content = resp.read().decode("utf-8")
+                resp.close()
+                
+                try:
+                    lines = [l for l in content.splitlines() if l.strip()]
+                    data = [json.loads(line) for line in lines]
+                except:
+                    data = json.loads(content)
+                    if isinstance(data, dict): data = [data]
+                
+                for d in data: d["source"] = source
+                all_data.extend(data)
+                print(f"✅ Loaded {source} ({date_str})")
+            except Exception: pass
 
-# 3. Processing
-df = pd.DataFrame(all_data)
-if df.empty:
-    print("❌ No data found.")
-    exit(1)
+    # 3. Processing
+    df = pd.DataFrame(all_data)
+    if df.empty:
+        print("❌ No data found.")
+        exit(1)
+        
+    print("\n🧪 UNIQUE LOCATIONS SAMPLE:")
+    if "location" in df.columns:
+        print(df["location"].dropna().unique()[:20])
+
+
+    df["title"] = df["title"].fillna("").apply(clean_title)
+    df["company"] = df["company"].fillna("confidentiel").str.strip().str.lower()
+    df["description"] = df["description"].fillna("")
     
-print("\n🧪 UNIQUE LOCATIONS SAMPLE:")
-print(df["location"].dropna().unique()[:20])
+    # Handle the fact that some sources use 'region' instead of 'location'
+    if "location" not in df.columns:
+        df["location"] = pd.Series(dtype=str)
+    if "region" in df.columns:
+        df["location"] = df["location"].fillna(df["region"])
+        
+    df["location"] = df["location"].fillna("").astype(str)
+    df["region"] = df["location"].apply(clean_location)
+    df["published_time"] = df["published_time"].apply(parse_date_smart)
+    df["contract"]   = df["description"].apply(extract_contract)
+    df["remote"]     = df["description"].apply(extract_remote)
+    df["education"]  = df["description"].apply(extract_education)
+    df["experience"] = df["description"].apply(extract_experience)
+    df["experience_level"] = df["experience"].apply(extract_experience_level)
+    df["skills"]     = df["description"].apply(extract_skills)
+    df["salaire"]    = df["description"].apply(extract_salary)
+    df["job_category"] = df.apply(lambda row: extract_job_category(row.get("title", ""), row.get("description", "")), axis=1)
+    df.drop_duplicates(subset=["title", "company", "source"], keep="first", inplace=True)
 
+    print("\n📍 REGION SAMPLE OUTPUT:")
+    print(df[["location", "region"]].head(15))
 
-df["title"] = df["title"].fillna("").apply(clean_title)
-df["company"] = df["company"].fillna("confidentiel").str.strip().str.lower()
-df["description"] = df["description"].fillna("")
-df["location"] = df["location"].fillna("").astype(str)
-df["region"] = df["location"].apply(clean_location)
-df["published_time"] = df["published_time"].apply(parse_date_smart)
-df["contract"]   = df["description"].apply(extract_contract)
-df["remote"]     = df["description"].apply(extract_remote)
-df["education"]  = df["description"].apply(extract_education)
-df["experience"] = df["description"].apply(extract_experience)
-df["skills"]     = df["description"].apply(extract_skills)
-df.drop_duplicates(subset=["title", "company", "source"], keep="first", inplace=True)
+    print("\n❌ UNMATCHED LOCATIONS:")
+    print(df[df["region"] == "Autre / International"]["location"].head(20))
 
-print("\n📍 REGION SAMPLE OUTPUT:")
-print(df[["location", "region"]].head(15))
+    # 4. Filtering
+    mask_data = df.apply(lambda row: is_data_job(row.get("title", ""), row.get("description", "")), axis=1)
+    mask_gen  = df.apply(lambda row: is_genuine_job_post(row.get("title", ""), row.get("description", "")), axis=1)
+    df_silver = df[mask_data | mask_gen]
 
-print("\n❌ UNMATCHED LOCATIONS:")
-print(df[df["region"] == "Autre / International"]["location"].head(20))
+    # 5. Save
+    if not df_silver.empty:
+        silver_key = f"jobs_data_cleaned_{today.strftime('%Y_%m_%d')}.parquet"
+        buf = BytesIO()
+        df_silver.to_parquet(buf, index=False)
+        buf.seek(0)
+        client.put_object(BUCKET_SILVER, silver_key, data=buf, length=buf.getbuffer().nbytes)
+        print(f"\n✅ Silver saved: {silver_key}")
+        print(f"📊 Final rows: {len(df_silver)}")
+        
+    # Calculate counts
+    total_rows = len(df)
+    clean_rows = len(df_silver)
+    noisy_rows = total_rows - clean_rows
 
-# 4. Filtering
-mask_data = df.apply(lambda row: is_data_job(row.get("title", ""), row.get("description", "")), axis=1)
-mask_gen  = df.apply(lambda row: is_genuine_job_post(row.get("title", ""), row.get("description", "")), axis=1)
-df_silver = df[mask_data | mask_gen]
+    print(f"\n--- Processing Statistics ---")
+    print(f"Total raw records loaded: {total_rows}")
+    print(f"Clean records (Silver): {clean_rows}")
+    print(f"Noisy/Discarded records: {noisy_rows}")
+    print(f"Filter rate: { (noisy_rows/total_rows)*100:.2f}% discarded")
 
-# 5. Save
-if not df_silver.empty:
-    silver_key = f"jobs_data_cleaned_{today.strftime('%Y_%m_%d')}.parquet"
-    buf = BytesIO()
-    df_silver.to_parquet(buf, index=False)
-    buf.seek(0)
-    client.put_object(BUCKET_SILVER, silver_key, data=buf, length=buf.getbuffer().nbytes)
-    print(f"\n✅ Silver saved: {silver_key}")
-    print(f"📊 Final rows: {len(df_silver)}")
-    
-# Calculate counts
-total_rows = len(df)
-clean_rows = len(df_silver)
-noisy_rows = total_rows - clean_rows
-
-print(f"\n--- Processing Statistics ---")
-print(f"Total raw records loaded: {total_rows}")
-print(f"Clean records (Silver): {clean_rows}")
-print(f"Noisy/Discarded records: {noisy_rows}")
-print(f"Filter rate: { (noisy_rows/total_rows)*100:.2f}% discarded")
+if __name__ == "__main__":
+    main()
