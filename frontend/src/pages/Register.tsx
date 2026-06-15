@@ -5,6 +5,8 @@ import { Mail, Lock, User, Briefcase, Building2, ArrowRight } from 'lucide-react
 export default function Register() {
   const navigate = useNavigate();
   const [role, setRole] = useState<'candidate' | 'recruiter' | null>(null);
+
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
   
   const [formData, setFormData] = useState({
     first_name: '',
@@ -25,7 +27,7 @@ export default function Register() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:8000/register', {
+      const response = await fetch(`${baseUrl}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...formData, role })

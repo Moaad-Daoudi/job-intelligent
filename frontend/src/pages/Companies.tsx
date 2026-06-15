@@ -17,6 +17,8 @@ export default function Companies() {
   const [searchInput, setSearchInput]   = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
 
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
   // ── Fetch ───────────────────────────────────────────────────────────────────
   const fetchCompanies = useCallback(async (search: string, currentPage: number) => {
     setLoading(true);
@@ -28,7 +30,7 @@ export default function Companies() {
       });
       if (search.trim()) params.set('search', search.trim());
 
-      const res = await fetch(`http://localhost:8000/companies?${params}`);
+      const res = await fetch(`${baseUrl}/companies?${params}`);
       if (!res.ok) throw new Error(`Server error ${res.status}`);
       const result = await res.json();
       setCompanies(result.data || []);

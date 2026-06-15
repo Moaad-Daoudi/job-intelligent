@@ -18,6 +18,8 @@ export default function CandidateProfile() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
   // Fetch candidate profile on load
   useEffect(() => {
     const fetchProfile = async () => {
@@ -25,7 +27,7 @@ export default function CandidateProfile() {
       setError(null);
       const token = localStorage.getItem('token');
       try {
-        const res = await fetch('http://localhost:8000/candidate/profile', {
+        const res = await fetch(`${baseUrl}/candidate/profile`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!res.ok) throw new Error(`Server returned error ${res.status}`);
@@ -64,7 +66,7 @@ export default function CandidateProfile() {
     const token = localStorage.getItem('token');
 
     try {
-      const res = await fetch('http://localhost:8000/candidate/profile', {
+      const res = await fetch(`${baseUrl}/candidate/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

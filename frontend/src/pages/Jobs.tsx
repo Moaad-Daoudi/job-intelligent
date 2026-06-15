@@ -35,6 +35,8 @@ export default function Jobs() {
   const [totalCount, setTotalCount] = useState(0);
   const limit = 10;
 
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
   // ── Core Fetch (all params optional & independent) ─────────────────────────
   const fetchJobs = useCallback(async (
     currentPage: number,
@@ -54,7 +56,7 @@ export default function Jobs() {
       if (contract && contract !== 'Any')         params.set('contract_type', contract);
       if (experience && experience !== 'Any')     params.set('experience_level', experience.toLowerCase());
 
-      const res = await fetch(`http://localhost:8000/jobs?${params.toString()}`);
+      const res = await fetch(`${baseUrl}/jobs?${params.toString()}`);
       if (!res.ok) throw new Error(`Server error ${res.status}`);
 
       const result = await res.json();

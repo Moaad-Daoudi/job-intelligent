@@ -51,13 +51,15 @@ export default function AdminDashboard() {
   // Active chart tooltip state
   const [hoveredLocation, setHoveredLocation] = useState<LocationStat | null>(null);
 
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
   const fetchStats = async () => {
     setLoading(true);
     setError(null);
     const token = localStorage.getItem('token');
     
     try {
-      const res = await fetch('http://localhost:8000/admin/stats', {
+      const res = await fetch(`${baseUrl}/admin/stats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!res.ok) {
@@ -82,7 +84,7 @@ export default function AdminDashboard() {
     const token = localStorage.getItem('token');
 
     try {
-      const res = await fetch('http://localhost:8000/admin/trigger-pipeline', {
+      const res = await fetch(`${baseUrl}/admin/trigger-pipeline`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });

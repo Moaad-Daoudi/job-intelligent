@@ -20,10 +20,12 @@ export default function CompanieProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
   useEffect(() => {
     const fetchCompany = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/companies/${id}`);
+        const res = await fetch(`${baseUrl}/companies/${id}`);
         if (!res.ok) throw new Error(`Error ${res.status}`);
         setCompany(await res.json());
       } catch (err: any) {

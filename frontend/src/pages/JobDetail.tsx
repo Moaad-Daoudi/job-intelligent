@@ -47,11 +47,13 @@ export default function JobDetail() {
   const isLoggedIn = !!localStorage.getItem('token');
   // const userRole = localStorage.getItem('user_role');
 
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
   // Fetch job details
   useEffect(() => {
     const fetchJob = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/jobs/${id}`);
+        const res = await fetch(`${baseUrl}/jobs/${id}`);
         if (!res.ok) throw new Error(`Error ${res.status}`);
         setJob(await res.json());
       } catch (err: any) {
@@ -69,7 +71,7 @@ export default function JobDetail() {
       if (!isLoggedIn || !id) return;
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`http://localhost:8000/jobs/${id}/status`, {
+        const res = await fetch(`${baseUrl}/jobs/${id}/status`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -95,7 +97,7 @@ export default function JobDetail() {
     const method = saved ? 'DELETE' : 'POST';
 
     try {
-      const res = await fetch(`http://localhost:8000/jobs/${id}/save`, {
+      const res = await fetch(`${baseUrl}/jobs/${id}/save`, {
         method,
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -125,7 +127,7 @@ export default function JobDetail() {
     const token = localStorage.getItem('token');
 
     try {
-      const res = await fetch(`http://localhost:8000/jobs/${id}/apply`, {
+      const res = await fetch(`${baseUrl}/jobs/${id}/apply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

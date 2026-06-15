@@ -41,6 +41,8 @@ export default function RecruiterDashboard() {
   const [sourcingCandidates, setSourcingCandidates] = useState<any[]>([]);
   const [sourcingLoading, setSourcingLoading] = useState<boolean>(false);
 
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
   const fetchDashboardData = async () => {
     setLoading(true);
     setError(null);
@@ -49,7 +51,7 @@ export default function RecruiterDashboard() {
 
     try {
       // 1. Fetch Company Link status
-      const companyRes = await fetch('http://localhost:8000/recruiter/company', { headers });
+      const companyRes = await fetch(`${baseUrl}/recruiter/company`, { headers });
       if (!companyRes.ok) throw new Error("Failed to verify company status");
       const companyData = await companyRes.json();
       
@@ -63,11 +65,11 @@ export default function RecruiterDashboard() {
       setCompany(companyData);
 
       // 2. Fetch posted jobs
-      const jobsRes = await fetch('http://localhost:8000/recruiter/jobs', { headers });
+      const jobsRes = await fetch(`${baseUrl}/recruiter/jobs`, { headers });
       if (jobsRes.ok) setJobs(await jobsRes.json());
 
       // 3. Fetch applications
-      const appsRes = await fetch('http://localhost:8000/recruiter/applications', { headers });
+      const appsRes = await fetch(`${baseUrl}/recruiter/applications`, { headers });
       if (appsRes.ok) setApplications(await appsRes.json());
 
     } catch (err: any) {
@@ -92,7 +94,7 @@ export default function RecruiterDashboard() {
       setNlpLoading(true);
       const token = localStorage.getItem('token');
       try {
-        const res = await fetch(`http://localhost:8000/recruiter/applications/${selectedApp.application_id}/nlp-analysis`, {
+        const res = await fetch(`${baseUrl}/recruiter/applications/${selectedApp.application_id}/nlp-analysis`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -120,7 +122,7 @@ export default function RecruiterDashboard() {
       setSourcingLoading(true);
       const token = localStorage.getItem('token');
       try {
-        const res = await fetch(`http://localhost:8000/recruiter/jobs/${sourcingJob.id}/matched-candidates`, {
+        const res = await fetch(`${baseUrl}/recruiter/jobs/${sourcingJob.id}/matched-candidates`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -149,7 +151,7 @@ export default function RecruiterDashboard() {
     const token = localStorage.getItem('token');
 
     try {
-      const res = await fetch('http://localhost:8000/recruiter/company', {
+      const res = await fetch(`${baseUrl}/recruiter/company`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -181,7 +183,7 @@ export default function RecruiterDashboard() {
     const token = localStorage.getItem('token');
 
     try {
-      const res = await fetch(`http://localhost:8000/recruiter/applications/${appId}/status`, {
+      const res = await fetch(`${baseUrl}/recruiter/applications/${appId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

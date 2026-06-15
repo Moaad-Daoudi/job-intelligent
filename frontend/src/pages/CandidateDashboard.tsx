@@ -16,6 +16,8 @@ export default function CandidateDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
   // Fetch all candidate data
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -27,19 +29,19 @@ export default function CandidateDashboard() {
         const headers = { 'Authorization': `Bearer ${token}` };
 
         // Fetch applications
-        const appRes = await fetch('http://localhost:8000/candidate/applications', { headers });
+        const appRes = await fetch(`${baseUrl}/candidate/applications`, { headers });
         if (!appRes.ok) throw new Error(`Failed to load applications: ${appRes.status}`);
         const appData = await appRes.json();
         setApplications(appData);
 
         // Fetch saved jobs
-        const savedRes = await fetch('http://localhost:8000/candidate/saved-jobs', { headers });
+        const savedRes = await fetch(`${baseUrl}/candidate/saved-jobs`, { headers });
         if (!savedRes.ok) throw new Error(`Failed to load saved jobs: ${savedRes.status}`);
         const savedData = await savedRes.json();
         setSavedJobs(savedData);
 
         // Fetch matched jobs
-        const matchedRes = await fetch('http://localhost:8000/candidate/matched-jobs', { headers });
+        const matchedRes = await fetch(`${baseUrl}/candidate/matched-jobs`, { headers });
         if (matchedRes.ok) {
           const matchedData = await matchedRes.json();
           setMatchedJobs(matchedData);
@@ -59,7 +61,7 @@ export default function CandidateDashboard() {
   const handleUnsave = async (jobId: number) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:8000/jobs/${jobId}/save`, {
+      const res = await fetch(`${baseUrl}/jobs/${jobId}/save`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

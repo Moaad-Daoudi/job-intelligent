@@ -17,6 +17,8 @@ export default function PostJob() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !location || !skills) {
@@ -29,7 +31,7 @@ export default function PostJob() {
     const token = localStorage.getItem('token');
 
     try {
-      const res = await fetch('http://localhost:8000/recruiter/jobs', {
+      const res = await fetch(`${baseUrl}/recruiter/jobs`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
