@@ -1,8 +1,8 @@
-import { useParams } from 'react-router-dom';
+// import { useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 
 export default function CompanyDetail() {
-  const { id } = useParams(); // Get company ID from URL
+  // const { id } = useParams(); // Get company ID from URL
 
   return (
     <Layout>

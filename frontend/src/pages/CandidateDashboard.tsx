@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import Layout from '../components/ui/Layout';
 import { 
   Briefcase, Bookmark, Award, Clock, MapPin, 
-  Trash2, ExternalLink, Calendar, FileText, ChevronRight,
+  Trash2, ExternalLink, Calendar, ChevronRight,
   Sparkles, Check, BookOpen
 } from 'lucide-react';
 

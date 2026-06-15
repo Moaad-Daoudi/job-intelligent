@@ -138,7 +138,6 @@ export default function AdminDashboard() {
   // SVG Chart Constants
   const barChartWidth = 480;
   const barChartHeight = 220;
-  const barPadding = 24;
   const graphPaddingLeft = 40;
   const graphPaddingRight = 20;
   const graphPaddingBottom = 30;

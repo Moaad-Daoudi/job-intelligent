@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/ui/Layout';
-import { Briefcase, MapPin, Tag, FileText, Globe, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { Briefcase, FileText, Globe, ArrowRight, Loader2, Sparkles } from 'lucide-react';
 
 export default function PostJob() {
   const navigate = useNavigate();

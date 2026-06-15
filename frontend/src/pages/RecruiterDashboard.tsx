@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import Layout from '../components/ui/Layout';
 import { 
   Briefcase, Users, Award, Clock, MapPin, Tag, 
-  ExternalLink, Calendar, FileText, ChevronRight, PlusCircle,
-  Building, Globe, Loader2, CheckCircle, X, Phone, Mail, FileIcon,
+  ExternalLink, Calendar, PlusCircle,
+  Building, Globe, Loader2, X, Phone, Mail, FileIcon,
   Sparkles
 } from 'lucide-react';
 

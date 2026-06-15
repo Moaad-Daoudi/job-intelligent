@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Layout from '../components/ui/Layout';
-import { Check, Info, HelpCircle } from 'lucide-react';
+import { Check, HelpCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Pricing() {

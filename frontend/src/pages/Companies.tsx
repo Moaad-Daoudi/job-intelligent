@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/ui/Layout';
-import { Search, Building2, Briefcase, Globe, ChevronRight, ChevronLeft, X } from 'lucide-react';
+import { Search, Briefcase, Globe, ChevronRight, ChevronLeft, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const LIMIT = 18; // cards per page

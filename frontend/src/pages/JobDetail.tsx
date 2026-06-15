@@ -45,7 +45,7 @@ export default function JobDetail() {
   const [appSuccess, setAppSuccess] = useState(false);
 
   const isLoggedIn = !!localStorage.getItem('token');
-  const userRole = localStorage.getItem('user_role');
+  // const userRole = localStorage.getItem('user_role');
 
   // Fetch job details
   useEffect(() => {
