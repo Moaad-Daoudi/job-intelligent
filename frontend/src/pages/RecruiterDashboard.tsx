@@ -4,7 +4,8 @@ import Layout from '../components/ui/Layout';
 import { 
   Briefcase, Users, Award, Clock, MapPin, Tag, 
   ExternalLink, Calendar, FileText, ChevronRight, PlusCircle,
-  Building, Globe, Loader2, CheckCircle, X, Phone, Mail, FileIcon
+  Building, Globe, Loader2, CheckCircle, X, Phone, Mail, FileIcon,
+  Sparkles
 } from 'lucide-react';
 
 export default function RecruiterDashboard() {
@@ -30,6 +31,15 @@ export default function RecruiterDashboard() {
   // Application detail modal states
   const [selectedApp, setSelectedApp] = useState<any>(null);
   const [statusUpdating, setStatusUpdating] = useState<number | null>(null);
+  
+  // NLP application analysis state
+  const [nlpAnalysis, setNlpAnalysis] = useState<any>(null);
+  const [nlpLoading, setNlpLoading] = useState<boolean>(false);
+  
+  // Sourcing talent state
+  const [sourcingJob, setSourcingJob] = useState<any>(null);
+  const [sourcingCandidates, setSourcingCandidates] = useState<any[]>([]);
+  const [sourcingLoading, setSourcingLoading] = useState<boolean>(false);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -71,9 +81,65 @@ export default function RecruiterDashboard() {
     fetchDashboardData();
   }, []);
 
+  // Effect to load NLP analysis when screening a candidate
+  useEffect(() => {
+    if (!selectedApp) {
+      setNlpAnalysis(null);
+      return;
+    }
+    
+    const fetchNlpAnalysis = async () => {
+      setNlpLoading(true);
+      const token = localStorage.getItem('token');
+      try {
+        const res = await fetch(`http://localhost:8000/recruiter/applications/${selectedApp.application_id}/nlp-analysis`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setNlpAnalysis(data);
+        }
+      } catch (err) {
+        console.error("Error loading NLP analysis:", err);
+      } finally {
+        setNlpLoading(false);
+      }
+    };
+    
+    fetchNlpAnalysis();
+  }, [selectedApp]);
+
+  // Effect to load passive candidate matching ranking list
+  useEffect(() => {
+    if (!sourcingJob) {
+      setSourcingCandidates([]);
+      return;
+    }
+    
+    const fetchSourcedCandidates = async () => {
+      setSourcingLoading(true);
+      const token = localStorage.getItem('token');
+      try {
+        const res = await fetch(`http://localhost:8000/recruiter/jobs/${sourcingJob.id}/matched-candidates`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setSourcingCandidates(data);
+        }
+      } catch (err) {
+        console.error("Error sourcing candidates:", err);
+      } finally {
+        setSourcingLoading(false);
+      }
+    };
+    
+    fetchSourcedCandidates();
+  }, [sourcingJob]);
+
   const handleOnboardingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyName.strip && !companyName) {
+    if (!companyName || !companyName.trim()) {
       setOnboardingError("Please enter your Company Name.");
       return;
     }
@@ -440,10 +506,18 @@ export default function RecruiterDashboard() {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+                          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-between md:justify-end">
                             <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
                               {job.applications_count} Candidates Applied
                             </span>
+                            <button
+                              onClick={() => setSourcingJob(job)}
+                              className="flex items-center gap-1.5 bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 text-xs font-bold px-3 py-1.5 rounded-xl transition shadow-sm"
+                              title="Source Talent with AI Matching"
+                            >
+                              <Sparkles size={14} className="text-teal-500" />
+                              Source Talent
+                            </button>
                             <Link
                               to={`/jobs/${job.id}`}
                               className="p-2 text-slate-400 hover:text-teal-600 rounded-lg hover:bg-slate-50 transition"
@@ -596,6 +670,88 @@ export default function RecruiterDashboard() {
                   {selectedApp.cover_letter || 'No cover letter attached.'}
                 </p>
               </div>
+
+              {/* AI Assessment Panel */}
+              {nlpLoading && (
+                <div className="bg-slate-50 border border-slate-100 p-6 rounded-2xl flex items-center justify-center gap-3">
+                  <Loader2 className="animate-spin text-teal-500" size={20} />
+                  <p className="text-sm font-semibold text-slate-500">AI Matching Engine scanning candidate qualifications...</p>
+                </div>
+              )}
+
+              {nlpAnalysis && (
+                <div className="bg-slate-50 border border-teal-100 p-6 rounded-2xl space-y-4">
+                  <div className="flex items-center gap-2 text-teal-600 font-extrabold text-sm uppercase tracking-wider">
+                    <Sparkles size={16} className="animate-pulse" /> AI Candidate Match Assessment
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                    <div className="flex flex-col items-center justify-center text-center bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                      <div className="relative w-16 h-16 flex items-center justify-center">
+                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                          <path
+                            className="text-slate-105"
+                            strokeWidth="3.2"
+                            stroke="currentColor"
+                            fill="none"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          />
+                          <path
+                            className="text-teal-500"
+                            strokeWidth="3.2"
+                            strokeDasharray={`${nlpAnalysis.score}, 100`}
+                            strokeLinecap="round"
+                            stroke="currentColor"
+                            fill="none"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          />
+                        </svg>
+                        <div className="absolute flex flex-col items-center">
+                          <span className="text-base font-black text-slate-800">{nlpAnalysis.score}%</span>
+                        </div>
+                      </div>
+                      <span className="text-[8px] font-black uppercase text-teal-600 tracking-wider mt-1">{nlpAnalysis.fit_level} FIT</span>
+                    </div>
+                    
+                    <div className="md:col-span-3 space-y-2">
+                      <p className="text-xs font-semibold text-slate-650 leading-relaxed">
+                        {nlpAnalysis.explanation}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-200">
+                    <div>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Matching Strengths ({nlpAnalysis.matched_skills.length})</p>
+                      <div className="flex flex-wrap gap-1">
+                        {nlpAnalysis.matched_skills.length === 0 ? (
+                          <span className="text-xs text-slate-400 italic">No direct matches.</span>
+                        ) : (
+                          nlpAnalysis.matched_skills.map((s: string) => (
+                            <span key={s} className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-lg">
+                              ✓ {s}
+                            </span>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Skills Gaps ({nlpAnalysis.missing_skills.length})</p>
+                      <div className="flex flex-wrap gap-1">
+                        {nlpAnalysis.missing_skills.length === 0 ? (
+                          <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-lg">✓ Perfect match!</span>
+                        ) : (
+                          nlpAnalysis.missing_skills.map((s: string) => (
+                            <span key={s} className="text-[9px] font-bold text-slate-500 bg-slate-100 border border-slate-205 px-2 py-0.5 rounded-lg">
+                              ✗ {s}
+                            </span>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Status transitions control */}
@@ -625,6 +781,191 @@ export default function RecruiterDashboard() {
                 className="py-3 px-8 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition text-sm text-center w-full md:w-auto"
               >
                 Close Profile
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ── AI TALENT SOURCER LEADERBOARD MODAL ── */}
+      {sourcingJob && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-3xl p-8 rounded-3xl shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200 relative max-h-[90vh] overflow-y-auto space-y-6">
+            <button 
+              onClick={() => setSourcingJob(null)}
+              className="absolute right-6 top-6 text-slate-400 hover:text-slate-700 transition"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Header */}
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="bg-teal-500/10 text-teal-600 text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full border border-teal-500/20 flex items-center gap-1">
+                  <Sparkles size={10} className="animate-pulse" /> AI Talent Sourcer
+                </span>
+              </div>
+              <h3 className="text-2xl font-extrabold text-slate-900 mt-2">
+                Passive Talent Sourcing
+              </h3>
+              <p className="text-xs text-slate-400 font-bold mt-1 uppercase tracking-wider">
+                Matching candidates for: <span className="text-teal-600 font-black">{sourcingJob.title}</span>
+              </p>
+            </div>
+
+            {/* Loader / Content */}
+            {sourcingLoading ? (
+              <div className="py-16 text-center space-y-4">
+                <Loader2 className="animate-spin text-teal-500 mx-auto" size={36} />
+                <p className="font-semibold text-slate-500">AI Matching Engine scanning candidate registry...</p>
+              </div>
+            ) : sourcingCandidates.length === 0 ? (
+              <div className="py-16 text-center text-slate-400 space-y-4">
+                <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto border border-slate-100">
+                  <Users size={28} className="text-slate-350" />
+                </div>
+                <p className="font-bold text-slate-700 text-base">No Matching Candidates Found</p>
+                <p className="text-sm max-w-md mx-auto leading-relaxed">
+                  Try broadening the required skills on the job description to find candidates in our talent database.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <p className="text-xs text-slate-400 font-semibold leading-relaxed">
+                  The following candidates from our database match this job's profile. You can reach out directly to recruit them.
+                </p>
+
+                <div className="space-y-4">
+                  {sourcingCandidates.map((candidate, idx) => {
+                    const score = candidate.nlp_analysis?.score ?? 0;
+                    const fitLevel = candidate.nlp_analysis?.fit_level ?? 'LOW';
+                    const matchedSkills = candidate.nlp_analysis?.matched_skills ?? [];
+                    const missingSkills = candidate.nlp_analysis?.missing_skills ?? [];
+                    const explanation = candidate.nlp_analysis?.explanation ?? '';
+
+                    return (
+                      <div key={idx} className="p-5 bg-slate-50 hover:bg-slate-100/70 border border-slate-100 hover:border-slate-200 rounded-2xl transition duration-205 space-y-4">
+                        
+                        {/* Candidate Row Info */}
+                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-black text-slate-400 text-xs mr-1">#{idx + 1}</span>
+                              <h4 className="font-extrabold text-slate-800 text-base">
+                                {candidate.first_name} {candidate.last_name}
+                              </h4>
+                              <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                                fitLevel === 'EXCELLENT' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                fitLevel === 'GOOD' ? 'bg-teal-50 text-teal-700 border-teal-100' :
+                                fitLevel === 'FAIR' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                'bg-slate-100 text-slate-500 border-slate-200'
+                              }`}>
+                                {fitLevel} FIT
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                              Current Profile: <span className="text-slate-600 font-extrabold">{candidate.title || 'Specialist'}</span>
+                            </p>
+                          </div>
+
+                          {/* Matching Score Circle */}
+                          <div className="flex items-center gap-3 self-start sm:self-center">
+                            <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
+                              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                                <path
+                                  className="text-slate-200"
+                                  strokeWidth="3.2"
+                                  stroke="currentColor"
+                                  fill="none"
+                                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                />
+                                <path
+                                  className="text-teal-500"
+                                  strokeWidth="3.2"
+                                  strokeDasharray={`${score}, 100`}
+                                  strokeLinecap="round"
+                                  stroke="currentColor"
+                                  fill="none"
+                                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                />
+                              </svg>
+                              <div className="absolute flex flex-col items-center">
+                                <span className="text-xs font-black text-slate-800">{score}%</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Explanation */}
+                        {explanation && (
+                          <p className="text-xs text-slate-500 leading-relaxed bg-white p-3 rounded-xl border border-slate-100 font-medium">
+                            {explanation}
+                          </p>
+                        )}
+
+                        {/* Strengths and Gaps */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Matching Strengths ({matchedSkills.length})</p>
+                            <div className="flex flex-wrap gap-1">
+                              {matchedSkills.length === 0 ? (
+                                <span className="text-xs text-slate-400 italic">No direct matches.</span>
+                              ) : (
+                                matchedSkills.map((s: string) => (
+                                  <span key={s} className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-lg">
+                                    ✓ {s}
+                                  </span>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Skills Gaps ({missingSkills.length})</p>
+                            <div className="flex flex-wrap gap-1">
+                              {missingSkills.length === 0 ? (
+                                <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-lg">✓ Perfect match!</span>
+                              ) : (
+                                missingSkills.map((s: string) => (
+                                  <span key={s} className="text-[9px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg">
+                                    ✗ {s}
+                                  </span>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Quick Contact / Actions */}
+                        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200/60">
+                          <div className="flex gap-4 text-xs font-semibold text-slate-500">
+                            <span className="flex items-center gap-1.5"><Mail size={13} className="text-teal-500" /> {candidate.email}</span>
+                            {candidate.phone && (
+                              <span className="flex items-center gap-1.5"><Phone size={13} className="text-teal-500" /> {candidate.phone}</span>
+                            )}
+                          </div>
+                          <a
+                            href={`mailto:${candidate.email}?subject=Exciting Opportunity: ${sourcingJob.title} at ${company?.name}`}
+                            className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl transition shadow-sm shadow-teal-500/10"
+                          >
+                            Reach Out
+                          </a>
+                        </div>
+
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Modal footer */}
+            <div className="pt-4 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setSourcingJob(null)}
+                className="py-3 px-8 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition text-sm"
+              >
+                Close Leaderboard
               </button>
             </div>
 

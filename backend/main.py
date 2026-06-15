@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from typing import Optional, List
 
 from models import Base, User, Company, SavedJob, JobApplication, init_db
+from nlp_engine import JobMatchEngine
 
 # Try to initialize database tables
 try:
@@ -707,6 +708,144 @@ def update_application_status(app_id: int, status_update: ApplicationStatusUpdat
     app.status = status_update.status
     db.commit()
     return {"message": "Application status updated successfully", "status": app.status}
+
+
+# --- Intelligent Matching & NLP Endpoints ---
+
+@app.get("/candidate/matched-jobs")
+def get_candidate_matched_jobs(current_user: User = Depends(get_current_candidate)):
+    candidate_profile = {
+        "title": current_user.title or "",
+        "skills": current_user.skills or "",
+        "bio": current_user.bio or ""
+    }
+    
+    query = """
+        SELECT f.job_id, f.title, f.location, f.skills, f.contract_type,
+               f.published_date, f.url, f.description, c.name as company
+        FROM fact_jobs f
+        LEFT JOIN dim_companies c ON f.company_id = c.company_id
+        ORDER BY f.published_date DESC NULLS LAST
+    """
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(sa_text(query))
+            rows = result.mappings().all()
+            jobs_data = [dict(row) for row in rows]
+    except Exception as e:
+        print("Error reading jobs for matching:", e)
+        return []
+        
+    matched_results = []
+    for job in jobs_data:
+        match_res = JobMatchEngine.analyze_match(candidate_profile, job)
+        
+        pub_date = job.get("published_date")
+        if pub_date:
+            job_pub = pub_date.isoformat() if hasattr(pub_date, "isoformat") else str(pub_date)
+        else:
+            job_pub = None
+            
+        matched_results.append({
+            "id": job["job_id"],
+            "title": job["title"],
+            "location": job["location"],
+            "skills": job["skills"],
+            "contract_type": job["contract_type"],
+            "published_date": job_pub,
+            "url": job["url"],
+            "company": job["company"],
+            "ai_match": match_res
+        })
+        
+    matched_results = sorted(matched_results, key=lambda x: x["ai_match"]["score"], reverse=True)
+    return matched_results
+
+@app.get("/recruiter/applications/{app_id}/nlp-analysis")
+def get_application_nlp_analysis(app_id: int, current_user: User = Depends(get_current_recruiter), db: Session = Depends(get_db)):
+    app = db.query(JobApplication).filter(JobApplication.id == app_id).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+        
+    query_verify = "SELECT company_id, title, skills, description FROM fact_jobs WHERE job_id = :job_id"
+    try:
+        with engine.connect() as conn:
+            job = conn.execute(sa_text(query_verify), {"job_id": app.job_id}).mappings().first()
+            if not job:
+                raise HTTPException(status_code=404, detail="Associated job not found")
+            if job["company_id"] != current_user.company_id:
+                raise HTTPException(status_code=403, detail="Access denied: You do not manage this job's applications")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Database verification error")
+        
+    candidate_user = db.query(User).filter(User.id == app.user_id).first()
+    if not candidate_user:
+        raise HTTPException(status_code=404, detail="Candidate user not found")
+        
+    candidate_profile = {
+        "title": candidate_user.title or "",
+        "skills": candidate_user.skills or "",
+        "bio": candidate_user.bio or ""
+    }
+    
+    job_profile = {
+        "title": job["title"] or "",
+        "skills": job["skills"] or "",
+        "description": job["description"] or ""
+    }
+    
+    analysis = JobMatchEngine.analyze_match(candidate_profile, job_profile)
+    return analysis
+
+@app.get("/recruiter/jobs/{job_id}/matched-candidates")
+def get_recruiter_matched_candidates(job_id: int, current_user: User = Depends(get_current_recruiter), db: Session = Depends(get_db)):
+    query_job = "SELECT company_id, title, skills, description FROM fact_jobs WHERE job_id = :job_id"
+    try:
+        with engine.connect() as conn:
+            job = conn.execute(sa_text(query_job), {"job_id": job_id}).mappings().first()
+            if not job:
+                raise HTTPException(status_code=404, detail="Job not found")
+            if job["company_id"] != current_user.company_id:
+                raise HTTPException(status_code=403, detail="Access denied: You do not manage this job offer")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Database verification error")
+        
+    candidates_list = db.query(User).filter(User.role == 'candidate').all()
+    
+    job_profile = {
+        "title": job["title"] or "",
+        "skills": job["skills"] or "",
+        "description": job["description"] or ""
+    }
+    
+    matched_candidates = []
+    for cand in candidates_list:
+        cand_profile = {
+            "title": cand.title or "",
+            "skills": cand.skills or "",
+            "bio": cand.bio or ""
+        }
+        
+        analysis = JobMatchEngine.analyze_match(cand_profile, job_profile)
+        
+        matched_candidates.append({
+            "id": cand.id,
+            "first_name": cand.first_name,
+            "last_name": cand.last_name,
+            "email": cand.email,
+            "phone": cand.phone or "",
+            "title": cand.title or "",
+            "skills": cand.skills or "",
+            "resume_url": cand.resume_url or "",
+            "ai_match": analysis
+        })
+        
+    matched_candidates = sorted(matched_candidates, key=lambda x: x["ai_match"]["score"], reverse=True)
+    return matched_candidates
 
 
 # --- Admin Visualization & BI Endpoints ---

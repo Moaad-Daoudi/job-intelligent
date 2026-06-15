@@ -3,13 +3,16 @@ import { Link } from 'react-router-dom';
 import Layout from '../components/ui/Layout';
 import { 
   Briefcase, Bookmark, Award, Clock, MapPin, 
-  Trash2, ExternalLink, Calendar, FileText, ChevronRight 
+  Trash2, ExternalLink, Calendar, FileText, ChevronRight,
+  Sparkles, Check, BookOpen
 } from 'lucide-react';
 
 export default function CandidateDashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'applications' | 'saved'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'applications' | 'saved' | 'ai-matches'>('overview');
   const [applications, setApplications] = useState<any[]>([]);
   const [savedJobs, setSavedJobs] = useState<any[]>([]);
+  const [matchedJobs, setMatchedJobs] = useState<any[]>([]);
+  const [selectedMatch, setSelectedMatch] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,6 +37,13 @@ export default function CandidateDashboard() {
         if (!savedRes.ok) throw new Error(`Failed to load saved jobs: ${savedRes.status}`);
         const savedData = await savedRes.json();
         setSavedJobs(savedData);
+
+        // Fetch matched jobs
+        const matchedRes = await fetch('http://localhost:8000/candidate/matched-jobs', { headers });
+        if (matchedRes.ok) {
+          const matchedData = await matchedRes.json();
+          setMatchedJobs(matchedData);
+        }
 
       } catch (err: any) {
         setError(err.message);
@@ -138,7 +148,8 @@ export default function CandidateDashboard() {
           {[
             { id: 'overview', label: 'Overview', icon: <Award size={16} /> },
             { id: 'applications', label: `My Applications (${applications.length})`, icon: <Briefcase size={16} /> },
-            { id: 'saved', label: `Saved Jobs (${savedJobs.length})`, icon: <Bookmark size={16} /> }
+            { id: 'saved', label: `Saved Jobs (${savedJobs.length})`, icon: <Bookmark size={16} /> },
+            { id: 'ai-matches', label: `AI Matches (${matchedJobs.length})`, icon: <Sparkles size={16} className="text-teal-500" /> }
           ].map(tab => (
             <button
               key={tab.id}
@@ -320,6 +331,195 @@ export default function CandidateDashboard() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 4. AI MATCHES TAB */}
+            {activeTab === 'ai-matches' && (
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-teal-500/10 via-cyan-500/10 to-teal-500/10 p-8 rounded-3xl border border-teal-100 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+                  <div className="space-y-2 text-center md:text-left">
+                    <div className="flex items-center justify-center md:justify-start gap-2 text-teal-600 font-extrabold text-sm uppercase tracking-wider">
+                      <Sparkles size={16} className="animate-pulse" /> AI Match Center
+                    </div>
+                    <h3 className="font-extrabold text-2xl text-slate-800">Your Intelligent Career Matcher</h3>
+                    <p className="text-slate-500 text-sm max-w-xl font-medium">
+                      Our advanced NLP system matches your listed skills, professional title, and bio against live job listings to find your perfect fit.
+                    </p>
+                  </div>
+                  <div className="bg-white px-6 py-4 rounded-2xl border border-slate-100 shadow-sm text-center shrink-0">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Profile Completeness</p>
+                    <p className="text-2xl font-black text-teal-600">85%</p>
+                    <Link to="/candidate/profile" className="text-xs text-slate-400 hover:text-teal-600 underline font-semibold mt-1 inline-block">
+                      Refine Profile
+                    </Link>
+                  </div>
+                </div>
+
+                {matchedJobs.length === 0 ? (
+                  <div className="bg-white text-center py-16 rounded-3xl border border-slate-100 shadow-sm text-slate-400">
+                    <p className="text-4xl mb-4">🧠</p>
+                    <p className="font-bold text-slate-700 text-lg mb-2">No matching jobs found</p>
+                    <p className="text-sm">Try adding more skills or detailing your bio/title on your profile page to trigger AI recommendations.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {matchedJobs.map((job) => {
+                      const match = job.ai_match || { score: 0, fit_level: 'Poor', matched_skills: [], missing_skills: [], explanation: '' };
+                      const score = match.score;
+                      
+                      let scoreBg = 'bg-rose-50 text-rose-700 border-rose-100';
+                      if (score >= 80) {
+                        scoreBg = 'bg-emerald-50 text-emerald-700 border-emerald-100';
+                      } else if (score >= 60) {
+                        scoreBg = 'bg-blue-50 text-blue-700 border-blue-100';
+                      } else if (score >= 40) {
+                        scoreBg = 'bg-amber-50 text-amber-700 border-amber-100';
+                      }
+                      
+                      const isExpanded = selectedMatch?.id === job.id;
+
+                      return (
+                        <div 
+                          key={job.id} 
+                          className={`bg-white border rounded-3xl transition-all duration-300 shadow-sm overflow-hidden ${
+                            isExpanded ? 'border-teal-200 shadow-md ring-1 ring-teal-500/10' : 'border-slate-100 hover:border-slate-200 hover:shadow-md'
+                          }`}
+                        >
+                          <div className="p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                            <div className="space-y-2 flex-grow">
+                              <div className="flex flex-wrap items-center gap-3">
+                                <span className={`text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${scoreBg}`}>
+                                  {score}% Match • {match.fit_level}
+                                </span>
+                                {score >= 80 && (
+                                  <span className="bg-yellow-50 text-yellow-700 border border-yellow-100 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                    ⭐ Top Pick
+                                  </span>
+                                )}
+                              </div>
+                              <h4 className="font-extrabold text-slate-800 text-xl hover:text-teal-600 transition">
+                                <Link to={`/jobs/${job.id}`}>{job.title}</Link>
+                              </h4>
+                              <p className="text-slate-600 font-bold text-sm">{job.company}</p>
+                              
+                              <div className="flex flex-wrap gap-4 text-xs text-slate-400 font-semibold pt-1">
+                                <span className="flex items-center gap-1"><MapPin size={12} /> {job.location}</span>
+                                {job.contract_type && <span className="flex items-center gap-1"><Clock size={12} /> {job.contract_type}</span>}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end shrink-0 pt-4 md:pt-0 border-t md:border-none border-slate-100">
+                              <button
+                                onClick={() => setSelectedMatch(isExpanded ? null : job)}
+                                className={`text-xs font-extrabold px-5 py-2.5 rounded-xl border transition flex items-center gap-1 ${
+                                  isExpanded 
+                                    ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800' 
+                                    : 'bg-teal-50 text-teal-700 border-teal-100 hover:bg-teal-100'
+                                }`}
+                              >
+                                {isExpanded ? 'Hide AI Details' : 'View AI Breakdown'}
+                              </button>
+                              <Link
+                                to={`/jobs/${job.id}`}
+                                className="bg-slate-900 hover:bg-teal-500 text-white text-xs font-extrabold px-5 py-2.5 rounded-xl transition flex items-center gap-1"
+                              >
+                                View Listing <ChevronRight size={14} />
+                              </Link>
+                            </div>
+                          </div>
+
+                          {isExpanded && (
+                            <div className="bg-slate-50 border-t border-slate-100 p-6 md:p-8 space-y-6">
+                              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center">
+                                  <div className="relative w-24 h-24 flex items-center justify-center">
+                                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                                      <path
+                                        className="text-slate-100"
+                                        strokeWidth="3.2"
+                                        stroke="currentColor"
+                                        fill="none"
+                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                      />
+                                      <path
+                                        className="text-teal-500"
+                                        strokeWidth="3.2"
+                                        strokeDasharray={`${score}, 100`}
+                                        strokeLinecap="round"
+                                        stroke="currentColor"
+                                        fill="none"
+                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                      />
+                                    </svg>
+                                    <div className="absolute flex flex-col items-center">
+                                      <span className="text-xl font-black text-slate-850">{score}%</span>
+                                      <span className="text-[7px] font-black uppercase text-slate-400 tracking-wider">AI FIT</span>
+                                    </div>
+                                  </div>
+                                  <p className="text-[10px] font-extrabold text-slate-400 mt-4 uppercase tracking-wider">
+                                    Overall Alignment: <span className="text-teal-600 font-bold">{match.fit_level}</span>
+                                  </p>
+                                </div>
+
+                                <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center space-y-3">
+                                  <h5 className="font-extrabold text-slate-800 text-sm uppercase tracking-wider flex items-center gap-1.5">
+                                    <Sparkles size={14} className="text-teal-500 animate-spin-slow" /> AI Insights & Assessment
+                                  </h5>
+                                  <p className="text-sm font-medium text-slate-600 leading-relaxed">
+                                    {match.explanation}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                                <h5 className="font-extrabold text-slate-800 text-sm uppercase tracking-wider">
+                                  Skills Fit & Upskill Checklist
+                                </h5>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Matched Skills ({match.matched_skills.length})</p>
+                                    {match.matched_skills.length === 0 ? (
+                                      <p className="text-xs text-slate-400 italic font-medium">No skills matched directly.</p>
+                                    ) : (
+                                      <div className="flex flex-wrap gap-2">
+                                        {match.matched_skills.map((skill: string) => (
+                                          <span key={skill} className="flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-xl">
+                                            <Check size={12} className="stroke-[3]" /> {skill}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                                      Missing / Suggested Skills ({match.missing_skills.length})
+                                    </p>
+                                    {match.missing_skills.length === 0 ? (
+                                      <p className="text-xs text-emerald-600 font-extrabold flex items-center gap-0.5">
+                                        <Check size={12} className="stroke-[3]" /> You meet all technical skill keywords!
+                                      </p>
+                                    ) : (
+                                      <div className="flex flex-wrap gap-2">
+                                        {match.missing_skills.map((skill: string) => (
+                                          <span key={skill} className="flex items-center gap-1 text-xs font-bold text-slate-500 bg-slate-105 border border-slate-200 px-3 py-1.5 rounded-xl hover:bg-teal-50 hover:text-teal-600 hover:border-teal-100 transition cursor-help" title={`Learn ${skill} to increase match score`}>
+                                            <BookOpen size={12} /> {skill}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
