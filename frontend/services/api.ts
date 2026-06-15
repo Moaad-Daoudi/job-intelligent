@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { API_URL } from '../src/config';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000', // Your FastAPI backend
+  baseURL: API_URL,
 });
 
 export const getJobs = (params: any) => api.get('/jobs', { params });

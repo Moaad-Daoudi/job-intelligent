@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, Query, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -29,10 +30,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-engine = create_engine("postgresql://user:password@localhost:5432/mydatabase")
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://user:password@localhost:5432/mydatabase")
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-SECRET_KEY = "supersecretkey_change_in_production"
+SECRET_KEY = os.environ.get("SECRET_KEY", "supersecretkey_change_in_production")
 ALGORITHM = "HS256"
 
 def get_password_hash(password: str) -> str:

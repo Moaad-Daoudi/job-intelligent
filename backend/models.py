@@ -1,3 +1,4 @@
+import os
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, create_engine, text
 from sqlalchemy.orm import declarative_base
 from datetime import datetime
@@ -56,7 +57,8 @@ class JobApplication(Base):
     cover_letter = Column(Text, nullable=True)
 
 # Connect to database
-engine = create_engine("postgresql://user:password@localhost:5432/mydatabase")
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://user:password@localhost:5432/mydatabase")
+engine = create_engine(DATABASE_URL)
 
 # Create tables
 def init_db():
