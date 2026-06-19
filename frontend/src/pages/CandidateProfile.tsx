@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, KeyboardEvent } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import type { KeyboardEvent } from "react";
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/ui/Layout';
 import {
