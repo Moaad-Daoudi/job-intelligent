@@ -1,0 +1,109 @@
+// Set the primary diagram layout
+// This forces Eraser to align components cleanly from left to right
+layout: left-to-right
+
+// 1. Data Sources Layer
+Group "1 - Data Sources" {
+  LinkedIn [icon: "linkedin"]
+  Rekrute [icon: "briefcase"]
+  Emploi_ma [icon: "briefcase"]
+}
+
+// 2. Scrapy Spiders (Ingestion)
+Group "2 - Scrapy Spiders (Python)" {
+  scrape_linkedin [icon: "python", label: "scrape_linkedin"]
+  scrape_rekrute [icon: "python", label: "scrape_rekrute"]
+  scrape_emploi [icon: "python", label: "scrape_emploi"]
+}
+
+// 3. MinIO Object Storage
+Group "3 - MinIO Object Storage" {
+  raw_bronze [icon: "folder", label: "Bronze Bucket\n(Raw JSON)"]
+  clean_silver [icon: "folder", label: "Silver Bucket\n(Cleaned JSON)"]
+}
+
+// 4. Apache Airflow Orchestration
+Group "4 - Apache Airflow" {
+  dag_scraping_maroc [icon: "clock", label: "dag_scraping_maroc"]
+  dag_processing_data [icon: "clock", label: "dag_processing_data"]
+  minio_cleaning [icon: "python", label: "minio_cleaning.py"]
+  gold_to_postgres [icon: "python", label: "gold_to_postgres.py"]
+}
+
+// 5. PostgreSQL Database
+Group "5 - PostgreSQL DWH" {
+  fact_jobs [icon: "database", label: "fact_jobs"]
+  users [icon: "database", label: "users"]
+  companies [icon: "database", label: "companies"]
+  job_applications [icon: "database", label: "job_applications"]
+  saved_jobs [icon: "database", label: "saved_jobs"]
+}
+
+// 6. Python NLP Engine & FastAPI Backend
+Group "6 - FastAPI & NLP Engine" {
+  cv_parser [icon: "file-text", label: "CV Skill Parser"]
+  matching_score [icon: "cpu", label: "CV-to-Job Matcher"]
+  api_endpoints [icon: "zap", label: "FastAPI REST APIs"]
+}
+
+// 7. Power BI Analytics
+Group "7 - Power BI Analytics" {
+  kpi_dashboard [icon: "bar-chart-2", label: "Power BI\nDashboard"]
+}
+
+// 8. React Web App
+Group "8 - React Frontend" {
+  search_jobs [icon: "search", label: "Job Search UI"]
+  candidate_dashboard [icon: "layout", label: "Candidate Dashboard"]
+  upload_resume [icon: "upload", label: "Upload CV"]
+}
+
+// --- Logical Flow & Connections ---
+
+// Step 1: Sources to Scrapy
+LinkedIn > scrape_linkedin
+Rekrute > scrape_rekrute
+Emploi_ma > scrape_emploi
+
+// Step 2: Airflow Orchestrates Scrapers
+dag_scraping_maroc > scrape_linkedin
+dag_scraping_maroc > scrape_rekrute
+dag_scraping_maroc > scrape_emploi
+
+// Step 3: Scrapers save Raw Data to MinIO Bronze
+scrape_linkedin > raw_bronze
+scrape_rekrute > raw_bronze
+scrape_emploi > raw_bronze
+
+// Step 4: Airflow Orchestrates Processing
+dag_processing_data > minio_cleaning
+minio_cleaning > gold_to_postgres
+
+// Step 5: Processing reads Bronze & writes Silver
+minio_cleaning > raw_bronze
+minio_cleaning > clean_silver
+
+// Step 6: Loading into PostgreSQL DWH
+gold_to_postgres > clean_silver
+gold_to_postgres > fact_jobs
+
+// Step 7: Power BI visualizes Postgres Data
+fact_jobs > kpi_dashboard
+companies > kpi_dashboard
+
+// Step 8: FastAPI Backend processes and serves data
+fact_jobs > api_endpoints
+users > api_endpoints
+companies > api_endpoints
+job_applications > api_endpoints
+saved_jobs > api_endpoints
+
+// Step 9: Frontend communicates with Backend APIs
+api_endpoints > search_jobs
+api_endpoints > candidate_dashboard
+
+// Step 10: CV Upload & Matching Pipeline
+upload_resume > cv_parser
+cv_parser > matching_score
+matching_score > candidate_dashboard
+fact_jobs > matching_score

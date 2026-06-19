@@ -22,6 +22,8 @@ class User(Base):
     bio = Column(Text, nullable=True)
     skills = Column(Text, nullable=True)
     resume_url = Column(Text, nullable=True)
+    education = Column(Text, nullable=True)
+    experience = Column(Text, nullable=True)
     
     # Recruiter company linkage
     company_id = Column(Integer, nullable=True)
@@ -70,6 +72,8 @@ def init_db():
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS skills TEXT"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_url TEXT"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS education TEXT"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS experience TEXT"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS company_id INTEGER"))
         conn.execute(text("ALTER TABLE fact_jobs ADD COLUMN IF NOT EXISTS description TEXT"))
         

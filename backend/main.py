@@ -107,6 +107,8 @@ class ProfileUpdate(BaseModel):
     bio: Optional[str] = None
     skills: Optional[str] = None
     resume_url: Optional[str] = None
+    education: Optional[str] = None
+    experience: Optional[str] = None
 
 class ApplicationCreate(BaseModel):
     cover_letter: Optional[str] = None
@@ -450,6 +452,32 @@ def get_candidate_profile(current_user: User = Depends(get_current_candidate)):
         "bio": current_user.bio or "",
         "skills": current_user.skills or "",
         "resume_url": current_user.resume_url or "",
+        "education": current_user.education or "",
+        "experience": current_user.experience or "",
+    }
+
+@app.get("/candidate/profile/{candidate_id}")
+def get_candidate_profile_by_id(candidate_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.role == 'candidate' and current_user.id != candidate_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    candidate_user = db.query(User).filter(User.id == candidate_id, User.role == 'candidate').first()
+    if not candidate_user:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+        
+    return {
+        "id": candidate_user.id,
+        "first_name": candidate_user.first_name,
+        "last_name": candidate_user.last_name,
+        "email": candidate_user.email,
+        "role": candidate_user.role,
+        "phone": candidate_user.phone or "",
+        "title": candidate_user.title or "",
+        "bio": candidate_user.bio or "",
+        "skills": candidate_user.skills or "",
+        "resume_url": candidate_user.resume_url or "",
+        "education": candidate_user.education or "",
+        "experience": candidate_user.experience or "",
     }
 
 @app.put("/candidate/profile")
@@ -468,6 +496,10 @@ def update_candidate_profile(profile: ProfileUpdate, current_user: User = Depend
         current_user.skills = profile.skills
     if profile.resume_url is not None:
         current_user.resume_url = profile.resume_url
+    if profile.education is not None:
+        current_user.education = profile.education
+    if profile.experience is not None:
+        current_user.experience = profile.experience
         
     db.commit()
     db.refresh(current_user)
@@ -673,8 +705,9 @@ def get_recruiter_applications(current_user: User = Depends(get_current_recruite
     query = """
         SELECT a.id as application_id, a.status, a.applied_at, a.cover_letter,
                f.job_id, f.title as job_title,
-               u.first_name, u.last_name, u.email as candidate_email, u.phone as candidate_phone,
-               u.skills as candidate_skills, u.bio as candidate_bio, u.resume_url as candidate_resume
+               u.id as candidate_id, u.first_name, u.last_name, u.email as candidate_email, u.phone as candidate_phone,
+               u.skills as candidate_skills, u.bio as candidate_bio, u.resume_url as candidate_resume,
+               u.education as candidate_education, u.experience as candidate_experience
         FROM job_applications a
         JOIN fact_jobs f ON a.job_id = f.job_id
         JOIN users u ON a.user_id = u.id
@@ -719,7 +752,7 @@ def get_candidate_matched_jobs(current_user: User = Depends(get_current_candidat
     candidate_profile = {
         "title": current_user.title or "",
         "skills": current_user.skills or "",
-        "bio": current_user.bio or ""
+        "bio": (current_user.bio or "") + " " + (current_user.education or "") + " " + (current_user.experience or "")
     }
     
     query = """
@@ -789,7 +822,7 @@ def get_application_nlp_analysis(app_id: int, current_user: User = Depends(get_c
     candidate_profile = {
         "title": candidate_user.title or "",
         "skills": candidate_user.skills or "",
-        "bio": candidate_user.bio or ""
+        "bio": (candidate_user.bio or "") + " " + (candidate_user.education or "") + " " + (candidate_user.experience or "")
     }
     
     job_profile = {
@@ -829,7 +862,7 @@ def get_recruiter_matched_candidates(job_id: int, current_user: User = Depends(g
         cand_profile = {
             "title": cand.title or "",
             "skills": cand.skills or "",
-            "bio": cand.bio or ""
+            "bio": (cand.bio or "") + " " + (cand.education or "") + " " + (cand.experience or "")
         }
         
         analysis = JobMatchEngine.analyze_match(cand_profile, job_profile)

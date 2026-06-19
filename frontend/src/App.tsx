@@ -8,6 +8,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import CandidateDashboard from './pages/CandidateDashboard';
 import CandidateProfile from './pages/CandidateProfile';
+import CVPreview from './pages/CVPreview';
 import ProtectedRoute from './components/ProtectedRoute';
 import About from './pages/About';
 import Pricing from './pages/Pricing';
@@ -28,6 +29,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/about" element={<About />} />
         <Route path="/pricing" element={<Pricing />} />
+        <Route path="/cv/:candidateId" element={<CVPreview />} />
         
         {/* Candidate protected routes */}
         <Route 

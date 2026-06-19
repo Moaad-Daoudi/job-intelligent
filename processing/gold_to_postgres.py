@@ -4,6 +4,20 @@ from minio import Minio
 from sqlalchemy import create_engine, text
 import os
 from urllib.parse import urlparse
+from pathlib import Path
+from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env", override=True)
+
+env_mode = os.getenv("ENVIRONMENT", "local")
+
+print("--- DATABASE CONNECTION DEBUG ---")
+print(f"Active OS Name: {os.name}")
+print(f"DB_HOST: {os.getenv('DB_HOST')}")
+print(f"DB_NAME: {os.getenv('DB_NAME')}")
+print(f"POSTGRES_HOST: {os.getenv('POSTGRES_HOST')}")
+print("---------------------------------")
 
 minio_endpoint = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
 parsed_url = urlparse(minio_endpoint)
@@ -16,7 +30,22 @@ client = Minio(
     secure=False
 )
 
-engine = create_engine(f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASS')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}")
+if env_mode == "production":
+    print("🚀 Connecting to ONLINE Neon Database...")
+    db_user = os.getenv('DB_USER')
+    db_pass = os.getenv('DB_PASS')
+    db_host = os.getenv('DB_HOST')
+    db_port = os.getenv('DB_PORT', 5432)
+    db_name = os.getenv('DB_NAME')
+else:
+    print("💻 Connecting to LOCAL PostgreSQL Container...")
+    db_user = os.getenv('POSTGRES_USER', 'user')
+    db_pass = os.getenv('POSTGRES_PASSWORD', 'password')
+    db_host = os.getenv('POSTGRES_HOST', 'postgres_db')
+    db_port = os.getenv('POSTGRES_PORT', 5432)
+    db_name = os.getenv('POSTGRES_DB', 'mydatabase')
+
+engine = create_engine(f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}")
 
 def init_gold_tables():
     with engine.begin() as conn:

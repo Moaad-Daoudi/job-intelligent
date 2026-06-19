@@ -628,17 +628,22 @@ export default function RecruiterDashboard() {
               <p className="flex items-center gap-2">
                 <Phone size={15} className="text-teal-500" /> {selectedApp.candidate_phone || 'No phone provided'}
               </p>
-              {selectedApp.candidate_resume ? (
+              <Link
+                to={`/cv/${selectedApp.candidate_id}`}
+                target="_blank"
+                className="flex items-center gap-2 text-teal-600 hover:underline md:col-span-2"
+              >
+                <FileIcon size={15} /> View Generated CV & Resume (Download/Print) <ExternalLink size={12} />
+              </Link>
+              {selectedApp.candidate_resume && (
                 <a
                   href={selectedApp.candidate_resume}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-teal-600 hover:underline md:col-span-2"
+                  className="flex items-center gap-2 text-slate-500 hover:underline md:col-span-2"
                 >
-                  <FileIcon size={15} /> View Candidate Resume/CV <ExternalLink size={12} />
+                  <FileIcon size={15} /> View Candidate Attachment link <ExternalLink size={12} />
                 </a>
-              ) : (
-                <p className="flex items-center gap-2 md:col-span-2 text-slate-400"><FileIcon size={15} /> No CV attached</p>
               )}
             </div>
 
@@ -662,6 +667,24 @@ export default function RecruiterDashboard() {
                   <h4 className="font-extrabold text-slate-800 text-sm uppercase tracking-wider">Biography / Description</h4>
                   <p className="text-sm text-slate-600 font-medium leading-relaxed bg-slate-50/50 p-4 border border-slate-100 rounded-2xl whitespace-pre-wrap">
                     {selectedApp.candidate_bio}
+                  </p>
+                </div>
+              )}
+
+              {selectedApp.candidate_experience && (
+                <div className="space-y-2">
+                  <h4 className="font-extrabold text-slate-800 text-sm uppercase tracking-wider">Work Experience</h4>
+                  <p className="text-sm text-slate-600 font-medium leading-relaxed bg-slate-50/50 p-4 border border-slate-100 rounded-2xl whitespace-pre-wrap">
+                    {selectedApp.candidate_experience}
+                  </p>
+                </div>
+              )}
+
+              {selectedApp.candidate_education && (
+                <div className="space-y-2">
+                  <h4 className="font-extrabold text-slate-800 text-sm uppercase tracking-wider">Education</h4>
+                  <p className="text-sm text-slate-600 font-medium leading-relaxed bg-slate-50/50 p-4 border border-slate-100 rounded-2xl whitespace-pre-wrap">
+                    {selectedApp.candidate_education}
                   </p>
                 </div>
               )}

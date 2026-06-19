@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Layout from '../components/ui/Layout';
 import { 
   Briefcase, Bookmark, Award, Clock, MapPin, 
@@ -8,15 +8,31 @@ import {
 } from 'lucide-react';
 
 export default function CandidateDashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'applications' | 'saved' | 'ai-matches'>('overview');
+  const location = useLocation();
+  const initialTab = (() => {
+    const params = new URLSearchParams(location.search);
+    const t = params.get('tab');
+    if (t === 'ai-matches' || t === 'applications' || t === 'saved') return t;
+    return 'overview';
+  })() as 'overview' | 'applications' | 'saved' | 'ai-matches';
+  const [activeTab, setActiveTab] = useState<'overview' | 'applications' | 'saved' | 'ai-matches'>(initialTab);
   const [applications, setApplications] = useState<any[]>([]);
   const [savedJobs, setSavedJobs] = useState<any[]>([]);
   const [matchedJobs, setMatchedJobs] = useState<any[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
+  // Calculate profile strength dynamically based on filled fields
+  const profileStrength = (() => {
+    if (!profile) return 0;
+    const fields = ['first_name', 'last_name', 'phone', 'title', 'bio', 'skills', 'education', 'experience'];
+    const filled = fields.filter(f => profile[f] && String(profile[f]).trim() !== '').length;
+    return Math.round((filled / fields.length) * 100);
+  })();
 
   // Fetch all candidate data
   useEffect(() => {
@@ -27,6 +43,13 @@ export default function CandidateDashboard() {
       
       try {
         const headers = { 'Authorization': `Bearer ${token}` };
+
+        // Fetch profile to get ID
+        const profileRes = await fetch(`${baseUrl}/candidate/profile`, { headers });
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          setProfile(profileData);
+        }
 
         // Fetch applications
         const appRes = await fetch(`${baseUrl}/candidate/applications`, { headers });
@@ -140,7 +163,7 @@ export default function CandidateDashboard() {
             </div>
             <div>
               <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Profile Strength</p>
-              <p className="text-3xl font-extrabold text-slate-800">85%</p>
+              <p className="text-3xl font-extrabold text-slate-800">{profileStrength}%</p>
             </div>
           </div>
         </div>
@@ -220,17 +243,29 @@ export default function CandidateDashboard() {
 
                 {/* Info & Profile Widget */}
                 <div className="space-y-6">
-                  <div className="bg-gradient-to-br from-teal-500 to-cyan-600 p-8 rounded-3xl text-white shadow-lg">
-                    <h3 className="font-bold text-lg mb-2">Enhance Your Profile</h3>
-                    <p className="text-teal-100 text-sm mb-6 leading-relaxed">
-                      Candidates with complete profile descriptions and lists of skills are 3x more likely to be contacted by recruiters.
-                    </p>
-                    <Link
-                      to="/candidate/profile"
-                      className="flex items-center justify-center gap-2 bg-white text-teal-700 font-bold px-6 py-3 rounded-xl hover:bg-teal-50 transition text-sm"
-                    >
-                      Update Profile <ChevronRight size={16} />
-                    </Link>
+                  <div className="bg-gradient-to-br from-teal-500 to-cyan-600 p-8 rounded-3xl text-white shadow-lg space-y-5">
+                    <div>
+                      <h3 className="font-bold text-lg mb-2">Enhance Your Profile</h3>
+                      <p className="text-teal-100 text-sm leading-relaxed">
+                        Candidates with complete profile descriptions, education, and skills are 3x more likely to be contacted by recruiters.
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Link
+                        to="/candidate/profile"
+                        className="flex items-center justify-center gap-2 bg-white text-teal-700 font-bold px-6 py-3 rounded-xl hover:bg-teal-50 transition text-sm shadow-sm"
+                      >
+                        Update Profile <ChevronRight size={16} />
+                      </Link>
+                      {profile && (
+                        <Link
+                          to={`/cv/${profile.id}`}
+                          className="flex items-center justify-center gap-2 bg-slate-900/30 hover:bg-slate-900/40 text-white font-bold px-6 py-3 rounded-xl transition text-sm border border-white/20"
+                        >
+                          View & Print CV <ChevronRight size={16} />
+                        </Link>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -353,7 +388,7 @@ export default function CandidateDashboard() {
                   </div>
                   <div className="bg-white px-6 py-4 rounded-2xl border border-slate-100 shadow-sm text-center shrink-0">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Profile Completeness</p>
-                    <p className="text-2xl font-black text-teal-600">85%</p>
+                    <p className="text-2xl font-black text-teal-600">{profileStrength}%</p>
                     <Link to="/candidate/profile" className="text-xs text-slate-400 hover:text-teal-600 underline font-semibold mt-1 inline-block">
                       Refine Profile
                     </Link>
