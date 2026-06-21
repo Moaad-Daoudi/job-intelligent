@@ -78,13 +78,13 @@ def init_db():
         conn.execute(text("ALTER TABLE fact_jobs ADD COLUMN IF NOT EXISTS description TEXT"))
         
         # Check if default admin exists, if not, automatically seed it
-        admin_exists = conn.execute(text("SELECT 1 FROM users WHERE email = 'admin@example.com'")).scalar()
+        admin_exists = conn.execute(text("SELECT 1 FROM users WHERE email = 'admin@gmail.com'")).scalar()
         if not admin_exists:
             # Pre-hashed bcrypt password for 'password123'
-            hashed_pwd = "$2b$12$R9h/lIPsI1i6kyEzV7m6deC.Y1Vusw8J1QnE8W15S9u775WbW2.pG"
+            hashed_pwd = "$2b$12$b4vMfEj8OC7buzvA.YlFTewntdYn9ziyI9f5KCAHW9Fy7p/9r5udK"
             conn.execute(text(
                 "INSERT INTO users (first_name, last_name, email, password_hash, role, created_at) "
-                "VALUES ('Super', 'Admin', 'admin@example.com', :pwd, 'admin', NOW())"
+                "VALUES ('Super', 'Admin', 'admin@gmail.com', :pwd, 'admin', NOW())"
             ), {"pwd": hashed_pwd})
             
         conn.commit()
